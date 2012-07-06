@@ -1,9 +1,11 @@
 package nl.vu.cs.cn;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import nl.vu.cs.cn.IP.IpAddress;
-
+import nl.vu.cs.cn.IP.Packet;
+import java.nio.ByteOrder;
 /**
  * This class represents a TCP stack. It should be built on top of the IP stack
  * which is bound to a given IP address.
@@ -107,50 +109,83 @@ public class TCP {
             return false;
         }
         
-        public void send_tcp_packet(byte[] buf, short src_port, short dst_port, int seq_number, int ack_number){
-        	byte[] payload = new byte[buf.length + 5 * 4]; // 5 x 32 bits in the tcp header + the buffer
+        public void send_tcp_packet(byte[] buf, short src_port, short dst_port, int seq_number, int ack_number, byte flags){
+//        	byte[] payload = new byte[buf.length + 5 * 4]; // 5 x 32 bits in the tcp header + the buffer
+//        	
+//        	payload[0] = (byte) (src_port >> 8);
+//        	payload[1] = (byte) (src_port);
+//        	
+//        	payload[2] = (byte) (dst_port >> 8);
+//        	payload[3] = (byte) (dst_port);
+//        	
+//        	payload[4] = (byte) (seq_number >> 24);
+//        	payload[5] = (byte) (seq_number >> 16);
+//        	payload[6] = (byte) (seq_number >> 8);
+//        	payload[7] = (byte) (seq_number);
+//        	
+//        	payload[8] = (byte) (ack_number >> 24);
+//        	payload[9] = (byte) (ack_number >> 16);
+//        	payload[10] = (byte) (ack_number >> 8);
+//        	payload[11] = (byte) (ack_number);
+//
+//        	short hl_fl = 0x5000; //TODO add | for the flags
+//        	payload[12] = (byte) (hl_fl >> 8);
+//        	payload[13] = (byte) (hl_fl);
+//        			
+//        	short window_size = 1;
+//        	payload[14] = (byte) (window_size >> 8);
+//        	payload[15] = (byte) (window_size);
+//        	
+//        	short tmpchecksum = 0;
+//        	payload[14] = (byte) (tmpchecksum >> 8);
+//        	payload[15] = (byte) (tmpchecksum);
+//        	
+//        	short urgpointer = 0;
+//        	payload[14] = (byte) (urgpointer >> 8);
+//        	payload[15] = (byte) (urgpointer);
         	
-        	payload[0] = (byte) (src_port >> 8);
-        	payload[1] = (byte) (src_port);
         	
-        	payload[2] = (byte) (dst_port >> 8);
-        	payload[3] = (byte) (dst_port);
+//        	System.arraycopy(buf, 0, payload, 16, buf.length);
         	
-        	payload[4] = (byte) (seq_number >> 24);
-        	payload[5] = (byte) (seq_number >> 16);
-        	payload[6] = (byte) (seq_number >> 8);
-        	payload[7] = (byte) (seq_number);
+//        	byte[] pseudo;
+//        	if(buf.length % 2 == 0){
+//        		pseudo = new byte[payload.length + 12];
+//        		
+//        	} else {
+//        		pseudo = new byte[payload.length + 13];
+//        	}
+//        	System.out.println("bufer length " + buf.length);		
+        	ByteBuffer bb = ByteBuffer.allocate(buf.length + 20);
         	
-        	payload[8] = (byte) (ack_number >> 24);
-        	payload[9] = (byte) (ack_number >> 16);
-        	payload[10] = (byte) (ack_number >> 8);
-        	payload[11] = (byte) (ack_number);
+        	bb.putShort(src_port);
+        	bb.putShort(dst_port);
+        	bb.putInt(seq_number);
+        	bb.putInt(ack_number);
+        	
+        	bb.put((byte) 0x50);	// The TCP header length = 5 and the 6 empty bits
 
-        	short hl_fl = 0x5000; //TODO add | for the flags
-        	payload[12] = (byte) (hl_fl >> 8);
-        	payload[13] = (byte) (hl_fl);
-        			
-        	short window_size = 1;
-        	payload[14] = (byte) (window_size >> 8);
-        	payload[15] = (byte) (window_size);
+        	byte mask = (byte) (flags & 0x1B);
+        	mask |= (1 << 3);
         	
-        	short tmpchecksum = 0;
-        	payload[14] = (byte) (tmpchecksum >> 8);
-        	payload[15] = (byte) (tmpchecksum);
+        	bb.put(mask);
+        	bb.putShort((short) 1);
+        	 
         	
-        	short urgpointer = 0;
-        	payload[14] = (byte) (urgpointer >> 8);
-        	payload[15] = (byte) (urgpointer);
+//        	System.out.println("position " + bb.position());
         	
         	
-        	System.arraycopy(buf, 0, payload, 16, buf.length);
+//        	Packet p = new Packet(3, 6, 10, bb.array(), 100);
+        	Packet p = new Packet((int) 0x3000, 6, 10, bb.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+//        	System.out.println(p.toString());
+        	print(bb);
         	
-        	byte[] pseudo;
-        	if(buf.length % 2 == 0){
-        		pseudo = new byte[payload.length + 12];
-        		
-        	} else {
-        		pseudo = new byte[payload.length + 13];
+        	
+        }
+        
+        void print(ByteBuffer bb){
+        	for(int i = 0; i < bb.capacity(); i++){
+        		System.out.print(bb.get(i) + " ");
+        			System.out.print("\n");
         	}
         }
     }
