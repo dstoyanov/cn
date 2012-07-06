@@ -106,6 +106,53 @@ public class TCP {
 
             return false;
         }
+        
+        public void send_tcp_packet(byte[] buf, short src_port, short dst_port, int seq_number, int ack_number){
+        	byte[] payload = new byte[buf.length + 5 * 4]; // 5 x 32 bits in the tcp header + the buffer
+        	
+        	payload[0] = (byte) (src_port >> 8);
+        	payload[1] = (byte) (src_port);
+        	
+        	payload[2] = (byte) (dst_port >> 8);
+        	payload[3] = (byte) (dst_port);
+        	
+        	payload[4] = (byte) (seq_number >> 24);
+        	payload[5] = (byte) (seq_number >> 16);
+        	payload[6] = (byte) (seq_number >> 8);
+        	payload[7] = (byte) (seq_number);
+        	
+        	payload[8] = (byte) (ack_number >> 24);
+        	payload[9] = (byte) (ack_number >> 16);
+        	payload[10] = (byte) (ack_number >> 8);
+        	payload[11] = (byte) (ack_number);
+
+        	short hl_fl = 0x5000; //TODO add | for the flags
+        	payload[12] = (byte) (hl_fl >> 8);
+        	payload[13] = (byte) (hl_fl);
+        			
+        	short window_size = 1;
+        	payload[14] = (byte) (window_size >> 8);
+        	payload[15] = (byte) (window_size);
+        	
+        	short tmpchecksum = 0;
+        	payload[14] = (byte) (tmpchecksum >> 8);
+        	payload[15] = (byte) (tmpchecksum);
+        	
+        	short urgpointer = 0;
+        	payload[14] = (byte) (urgpointer >> 8);
+        	payload[15] = (byte) (urgpointer);
+        	
+        	
+        	System.arraycopy(buf, 0, payload, 16, buf.length);
+        	
+        	byte[] pseudo;
+        	if(buf.length % 2 == 0){
+        		pseudo = new byte[payload.length + 12];
+        		
+        	} else {
+        		pseudo = new byte[payload.length + 13];
+        	}
+        }
     }
 
     /**
