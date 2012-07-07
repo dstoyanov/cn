@@ -2,10 +2,9 @@ package nl.vu.cs.cn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.IP.Packet;
-import java.nio.ByteOrder;
+
 /**
  * This class represents a TCP stack. It should be built on top of the IP stack
  * which is bound to a given IP address.
@@ -109,85 +108,128 @@ public class TCP {
             return false;
         }
         
-        public void send_tcp_packet(byte[] buf, short src_port, short dst_port, int seq_number, int ack_number, byte flags){
-//        	byte[] payload = new byte[buf.length + 5 * 4]; // 5 x 32 bits in the tcp header + the buffer
-//        	
-//        	payload[0] = (byte) (src_port >> 8);
-//        	payload[1] = (byte) (src_port);
-//        	
-//        	payload[2] = (byte) (dst_port >> 8);
-//        	payload[3] = (byte) (dst_port);
-//        	
-//        	payload[4] = (byte) (seq_number >> 24);
-//        	payload[5] = (byte) (seq_number >> 16);
-//        	payload[6] = (byte) (seq_number >> 8);
-//        	payload[7] = (byte) (seq_number);
-//        	
-//        	payload[8] = (byte) (ack_number >> 24);
-//        	payload[9] = (byte) (ack_number >> 16);
-//        	payload[10] = (byte) (ack_number >> 8);
-//        	payload[11] = (byte) (ack_number);
-//
-//        	short hl_fl = 0x5000; //TODO add | for the flags
-//        	payload[12] = (byte) (hl_fl >> 8);
-//        	payload[13] = (byte) (hl_fl);
-//        			
-//        	short window_size = 1;
-//        	payload[14] = (byte) (window_size >> 8);
-//        	payload[15] = (byte) (window_size);
-//        	
-//        	short tmpchecksum = 0;
-//        	payload[14] = (byte) (tmpchecksum >> 8);
-//        	payload[15] = (byte) (tmpchecksum);
-//        	
-//        	short urgpointer = 0;
-//        	payload[14] = (byte) (urgpointer >> 8);
-//        	payload[15] = (byte) (urgpointer);
+        public boolean send_tcp_packet(int dst_address, byte[] buf, short src_port, short dst_port, int seq_number, int ack_number, byte flags){
+		
+        	ByteBuffer pseudo;
+        	ByteBuffer tcp_packet = ByteBuffer.allocate(buf.length + 20);
         	
         	
-//        	System.arraycopy(buf, 0, payload, 16, buf.length);
+        	if(buf.length % 2 == 0){
+        		pseudo = ByteBuffer.allocate(buf.length + 32);
+        	} else{
+        		pseudo = ByteBuffer.allocate(buf.length + 33);
+        	}
         	
-//        	byte[] pseudo;
-//        	if(buf.length % 2 == 0){
-//        		pseudo = new byte[payload.length + 12];
-//        		
-//        	} else {
-//        		pseudo = new byte[payload.length + 13];
-//        	}
-//        	System.out.println("bufer length " + buf.length);		
-        	ByteBuffer bb = ByteBuffer.allocate(buf.length + 20);
+        	/* The pseudo header for checksum computation	 */
+        	int localaddr = ip.getLocalAddress().getAddress();
         	
-        	bb.putShort(src_port);
-        	bb.putShort(dst_port);
-        	bb.putInt(seq_number);
-        	bb.putInt(ack_number);
-        	
-        	bb.put((byte) 0x50);	// The TCP header length = 5 and the 6 empty bits
+        	System.out.println("local addr " + localaddr);
+        	pseudo.put((byte)(localaddr & 0xff));
+        	pseudo.put((byte)(localaddr >> 8 & 0xff));
+        	pseudo.put((byte)(localaddr >> 16 & 0xff));
+        	pseudo.put((byte)(localaddr >>> 24));
 
-        	byte mask = (byte) (flags & 0x1B);
+
+        	
+//        	pseudo.putInt(ip.getLocalAddress().getAddress());
+        	pseudo.putInt(dst_address);
+        	pseudo.put((byte)0);
+        	pseudo.put((byte) 6);
+        	pseudo.putShort((short) (buf.length + 20));
+        	
+        	pseudo.putShort(src_port);
+        	pseudo.putShort(dst_port);
+        	pseudo.putInt(seq_number);
+        	pseudo.putInt(ack_number);
+        	
+        	pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 6 empty bits
+
+        	byte mask = (byte) (flags & 0x1b);
         	mask |= (1 << 3);
         	
-        	bb.put(mask);
-        	bb.putShort((short) 1);
-        	 
+        	pseudo.put(mask);
+        	pseudo.putShort((short) 32792);	//Window size
         	
-//        	System.out.println("position " + bb.position());
+        	pseudo.putInt(0);			//The Checksum and the urgent pointer
+        	pseudo.put(buf);
+        	
+        	if(buf.length % 2 != 0){
+        		pseudo.put((byte) 0);
+        	}
+        	
+        	long checksum = calculateChecksum(pseudo.array());
+        	
+        	System.out.println("Checksum " + Long.toHexString(checksum));
+
+        	tcp_packet.putShort(src_port);
+        	tcp_packet.putShort(dst_port);
+        	tcp_packet.putInt(seq_number);
+        	tcp_packet.putInt(ack_number);
+        	tcp_packet.put((byte) 0x50);
+        	
+        	tcp_packet.put(mask);
+        	tcp_packet.putShort((short) 1);	//Window size
+
+        	tcp_packet.putShort((short) checksum);
+        	tcp_packet.putShort((short) 0); //Urgent pointer
+        	tcp_packet.put(buf);
         	
         	
-//        	Packet p = new Packet(3, 6, 10, bb.array(), 100);
-        	Packet p = new Packet((int) 0x3000, 6, 10, bb.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
-//        	System.out.println(p.toString());
-        	print(bb);
+//        	System.out.println(tcp_packet);
+//        	System.out.println("Local address " + ip.getLocalAddress().toString());
+        	Packet p1 = new Packet(dst_address, 6, 10, tcp_packet.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+//        	Packet p2 = new Packet(dst_address, 6, 10, pseudo.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+//
+//      	System.out.println(p2.toString());
+        	System.out.println(p1.toString());
+//        	try{
+//        		ip.ip_send(p);
+//        	} catch(IOException e){
+//        		return false;			//if the send fails
+//        	}
         	
-        	
+        	return true;
         }
         
-        void print(ByteBuffer bb){
-        	for(int i = 0; i < bb.capacity(); i++){
-        		System.out.print(bb.get(i) + " ");
-        			System.out.print("\n");
-        	}
-        }
+        private long calculateChecksum(byte[] buf) {
+            int length = buf.length;
+            int i = 0;
+
+            long sum = 0;
+            long data;
+
+            // Handle all pairs
+            while (length > 1) {
+              // Corrected to include @Andy's edits and various comments on Stack Overflow
+              data = (((buf[i] << 8) & 0xFF00) | ((buf[i + 1]) & 0xFF));
+              sum += data;
+              // 1's complement carry bit correction in 16-bits (detecting sign extension)
+              if ((sum & 0xFFFF0000) > 0) {
+                sum = sum & 0xFFFF;
+                sum += 1;
+              }
+
+              i += 2;
+              length -= 2;
+            }
+
+            // Handle remaining byte in odd length buffers
+            if (length > 0) {
+              // Corrected to include @Andy's edits and various comments on Stack Overflow
+              sum += (buf[i] << 8 & 0xFF00);
+              // 1's complement carry bit correction in 16-bits (detecting sign extension)
+              if ((sum & 0xFFFF0000) > 0) {
+                sum = sum & 0xFFFF;
+                sum += 1;
+              }
+            }
+
+            // Final 1's complement value correction to 16-bits
+            sum = ~sum;
+            sum = sum & 0xFFFF;
+            return sum;
+
+          }
     }
 
     /**
