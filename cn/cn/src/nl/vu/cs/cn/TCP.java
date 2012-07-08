@@ -112,7 +112,7 @@ public class TCP {
 		
         	ByteBuffer pseudo;
         	ByteBuffer tcp_packet = ByteBuffer.allocate(buf.length + 20);
-        	
+        	int dst_ip;
         	
         	if(buf.length % 2 == 0){
         		pseudo = ByteBuffer.allocate(buf.length + 32);
@@ -123,16 +123,18 @@ public class TCP {
         	/* The pseudo header for checksum computation	 */
         	int localaddr = ip.getLocalAddress().getAddress();
         	
-        	System.out.println("local addr " + localaddr);
         	pseudo.put((byte)(localaddr & 0xff));
         	pseudo.put((byte)(localaddr >> 8 & 0xff));
         	pseudo.put((byte)(localaddr >> 16 & 0xff));
         	pseudo.put((byte)(localaddr >>> 24));
 
-
-        	
 //        	pseudo.putInt(ip.getLocalAddress().getAddress());
-        	pseudo.putInt(dst_address);
+        	dst_ip = IpAddress.getAddress("192.168.0." + dst_address).getAddress();
+        	pseudo.put((byte)(dst_ip & 0xff));
+        	pseudo.put((byte)(dst_ip >> 8 & 0xff));
+        	pseudo.put((byte)(dst_ip >> 16 & 0xff));
+        	pseudo.put((byte)(dst_ip >>> 24));
+        	
         	pseudo.put((byte)0);
         	pseudo.put((byte) 6);
         	pseudo.putShort((short) (buf.length + 20));
@@ -177,18 +179,37 @@ public class TCP {
         	
 //        	System.out.println(tcp_packet);
 //        	System.out.println("Local address " + ip.getLocalAddress().toString());
-        	Packet p1 = new Packet(dst_address, 6, 10, tcp_packet.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
-//        	Packet p2 = new Packet(dst_address, 6, 10, pseudo.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+        	
+        	
+        	Packet p1 = new Packet(dst_ip, 6, 10, tcp_packet.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+        	p1.source = localaddr;
+        	//        	Packet p2 = new Packet(dst_ip, 6, 10, pseudo.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
 //
 //      	System.out.println(p2.toString());
         	System.out.println(p1.toString());
-//        	try{
-//        		ip.ip_send(p);
-//        	} catch(IOException e){
-//        		return false;			//if the send fails
-//        	}
+        	try{
+        		ip.ip_send(p1);
+        	} catch(IOException e){
+        		return false;			//if the send fails
+        	}
         	
         	return true;
+        }
+        
+        public Packet recv_tcp_packet(){
+        	Packet p = new Packet();
+        	
+        	System.out.println("Receive");
+        	try{
+        		ip.ip_receive(p);
+        		System.out.println("received");
+        		
+        		System.out.println(p.toString());
+        	} catch (IOException e){
+        		e.printStackTrace();
+        		return null;
+        	}
+        	return p;
         }
         
         private long calculateChecksum(byte[] buf) {
