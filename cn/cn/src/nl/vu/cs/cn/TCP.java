@@ -2,6 +2,7 @@ package nl.vu.cs.cn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.IP.Packet;
 
@@ -164,6 +165,10 @@ public class TCP {
         	
         	System.out.println("Checksum " + Long.toHexString(checksum));
 
+        	pseudo.putShort(28,(short) checksum);
+        	System.out.println("Checksum - should be 0 " + Long.toHexString(calculateChecksum(pseudo.array())));
+        	
+        	
         	tcp_packet.putShort(src_port);
         	tcp_packet.putShort(dst_port);
         	tcp_packet.putInt(seq_number);
@@ -195,6 +200,7 @@ public class TCP {
         	Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
         	p1.source = localaddr;
 
+        	System.out.println("At send: " + p1.toString());
         	try{
         		ip.ip_send(p1);
         	} catch(IOException e){
@@ -211,6 +217,40 @@ public class TCP {
         	try{
         		ip.ip_receive(p);
         		System.out.println("Destination " + p.destination);
+        		System.out.println("Source " + p.source);
+        		System.out.println("Protocol " + p.protocol);
+        		System.out.println("Data");
+        		StringBuffer hexString = new StringBuffer();
+//        		for(int i = 0; i < p.data.length; i++){
+//        			String hex = Integer.toHexString(0xff & p.data[i]);
+//        			if(hex.length() ==  1){
+//        				hexString.append('0');
+//        			}
+//        			hexString.append(hex);
+//        		}
+//        		System.out.print(hexString);
+        		System.out.println(p.toString());
+
+        		int pseudoLength = p.length + 12;
+        		if (p.length % 2 == 1)
+        			pseudoLength++;
+        		pseudo = ByteBuffer.allocate(pseudoLength);
+        		pseudo.putInt((int) p.source);
+        		pseudo.putInt((int) p.destination);
+        		pseudo.put((byte) 0);
+        		pseudo.put((byte) p.protocol);
+        		pseudo.putShort((short) p.length);
+        		pseudo.put(p.data);
+        		if (p.length % 2 == 1){
+        			pseudo.put((byte) 0);
+        		}
+        		
+        		long checksum = calculateChecksum(pseudo.array());
+        		System.out.println("Received checksum " + Long.toHexString(checksum));
+        		System.out.println("p.length" + p.length);
+        		
+        		
+        		
         		
         	} catch (IOException e){
         		e.printStackTrace();
