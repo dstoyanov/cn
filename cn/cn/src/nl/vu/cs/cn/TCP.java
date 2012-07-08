@@ -108,16 +108,16 @@ public class TCP {
             return false;
         }
         
-        public boolean send_tcp_packet(int dst_address, byte[] buf, short src_port, short dst_port, int seq_number, int ack_number, byte flags){
+        public boolean send_tcp_packet(int dst_address, byte[] buf, int length, short src_port, short dst_port, int seq_number, int ack_number, byte flags){
 		
         	ByteBuffer pseudo;
-        	ByteBuffer tcp_packet = ByteBuffer.allocate(buf.length + 20);
+        	ByteBuffer tcp_packet = ByteBuffer.allocate(length + 20);
         	int dst_ip;
         	
-        	if(buf.length % 2 == 0){
-        		pseudo = ByteBuffer.allocate(buf.length + 32);
+        	if(length % 2 == 0){
+        		pseudo = ByteBuffer.allocate(length + 32);
         	} else{
-        		pseudo = ByteBuffer.allocate(buf.length + 33);
+        		pseudo = ByteBuffer.allocate(length + 33);
         	}
         	
         	/* The pseudo header for checksum computation	 */
@@ -128,7 +128,6 @@ public class TCP {
         	pseudo.put((byte)(localaddr >> 16 & 0xff));
         	pseudo.put((byte)(localaddr >>> 24));
 
-//        	pseudo.putInt(ip.getLocalAddress().getAddress());
         	dst_ip = IpAddress.getAddress("192.168.0." + dst_address).getAddress();
         	pseudo.put((byte)(dst_ip & 0xff));
         	pseudo.put((byte)(dst_ip >> 8 & 0xff));
@@ -137,25 +136,27 @@ public class TCP {
         	
         	pseudo.put((byte)0);
         	pseudo.put((byte) 6);
-        	pseudo.putShort((short) (buf.length + 20));
+        	pseudo.putShort((short) (length + 20));
         	
         	pseudo.putShort(src_port);
         	pseudo.putShort(dst_port);
         	pseudo.putInt(seq_number);
         	pseudo.putInt(ack_number);
         	
-        	pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 6 empty bits
+        	pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 4 empty bits
 
         	byte mask = (byte) (flags & 0x1b);
-        	mask |= (1 << 3);
+        	mask |= (1 << 3) & 0xff;
         	
+        	System.out.println("mask " + (int)mask);
+
         	pseudo.put(mask);
-        	pseudo.putShort((short) 32792);	//Window size
+        	pseudo.putShort((short) 1);	//Window size
         	
         	pseudo.putInt(0);			//The Checksum and the urgent pointer
         	pseudo.put(buf);
         	
-        	if(buf.length % 2 != 0){
+        	if(length % 2 != 0){
         		pseudo.put((byte) 0);
         	}
         	
@@ -179,14 +180,21 @@ public class TCP {
         	
 //        	System.out.println(tcp_packet);
 //        	System.out.println("Local address " + ip.getLocalAddress().toString());
-        	
-        	
-        	Packet p1 = new Packet(dst_ip, 6, 10, tcp_packet.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
+//        	
+//        	StringBuffer hexString = new StringBuffer();
+//        	for(int i = 0; i < tcp_packet.limit(); i++){
+//        		String hex = Integer.toHexString(0xff & tcp_packet.get(i));
+//        		if(hex.length() ==  1){
+//        			hexString.append('0');
+//        		}
+//        		hexString.append(hex);
+//        	}
+//        	
+//        		System.out.print(hexString);
+
+        	Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
         	p1.source = localaddr;
-        	//        	Packet p2 = new Packet(dst_ip, 6, 10, pseudo.array(), buf.length + 20); //TODO why the length can be smaller than the data size?
-//
-//      	System.out.println(p2.toString());
-        	System.out.println(p1.toString());
+
         	try{
         		ip.ip_send(p1);
         	} catch(IOException e){
@@ -196,20 +204,19 @@ public class TCP {
         	return true;
         }
         
-        public Packet recv_tcp_packet(){
+        public boolean recv_tcp_packet(){
         	Packet p = new Packet();
+        	ByteBuffer bb, pseudo;
         	
-        	System.out.println("Receive");
         	try{
         		ip.ip_receive(p);
-        		System.out.println("received");
+        		System.out.println("Destination " + p.destination);
         		
-        		System.out.println(p.toString());
         	} catch (IOException e){
         		e.printStackTrace();
-        		return null;
+        		return false;
         	}
-        	return p;
+        	return true;
         }
         
         private long calculateChecksum(byte[] buf) {
