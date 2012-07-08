@@ -25,13 +25,13 @@ public class TcpControlBlock {
 	public int tcb_data_left;						//Undelivered data byetes
 	public ConnectionState tcb_state;				//The current connection state
 	
-	public TcpControlBlock(IpAddress tcb_our_ip_addr, IpAddress tcb_their_ip_addr){
-		
+	public TcpControlBlock(IpAddress tcb_our_ip_addr){
 		this.tcb_our_ip_addr = tcb_our_ip_addr;
-		this.tcb_their_ip_addr = tcb_their_ip_addr;
-		tcb_state = ConnectionState.S_CLOSED;
+		this.tcb_our_sequence_number = 0;
+		this.tcb_state = ConnectionState.S_CLOSED;
 		tcb_data = new byte[MAX_BUF_SIZE];
 		tcb_p_data = new byte[MAX_BUF_SIZE];
+		
 		
 	}
 }

@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.IP.Packet;
+import nl.vu.cs.cn.TcpControlBlock.ConnectionState;
 
 /**
  * This class represents a TCP stack. It should be built on top of the IP stack
@@ -22,12 +23,13 @@ public class TCP {
     public class Socket {
 
     	/* Hint: You probably need some socket specific data. */
+    	private TcpControlBlock tcb;
 
     	/**
     	 * Construct a client socket.
     	 */
     	private Socket() {
-
+    		tcb = new TcpControlBlock(ip.getLocalAddress());
     	}
 
     	/**
@@ -36,7 +38,8 @@ public class TCP {
     	 * @param port the local port to use
     	 */
         private Socket(int port) {
-			// TODO Auto-generated constructor stub
+        	tcb = new TcpControlBlock(ip.getLocalAddress());
+//        	tcb.tcb_our_port = port;
 		}
 
 		/**
@@ -59,9 +62,9 @@ public class TCP {
          * This call blocks until a connection is made.
          */
         public void accept() {
-
+        	TcpPacket tcpp = new TcpPacket();
+        	
             // Implement the receive side of the three-way handshake here.
-
         }
 
         /**
@@ -162,13 +165,8 @@ public class TCP {
         	}
         	
         	long checksum = calculateChecksum(pseudo.array());
-        	
         	System.out.println("Checksum " + Long.toHexString(checksum));
 
-        	pseudo.putShort(28,(short) checksum);
-        	System.out.println("Checksum - should be 0 " + Long.toHexString(calculateChecksum(pseudo.array())));
-        	
-        	
         	tcp_packet.putShort(src_port);
         	tcp_packet.putShort(dst_port);
         	tcp_packet.putInt(seq_number);
@@ -183,9 +181,9 @@ public class TCP {
         	tcp_packet.put(buf);
         	
         	
-//        	System.out.println(tcp_packet);
-//        	System.out.println("Local address " + ip.getLocalAddress().toString());
-//        	
+        	System.out.println(tcp_packet);
+        	System.out.println("Local address " + ip.getLocalAddress().toString());
+        	
 //        	StringBuffer hexString = new StringBuffer();
 //        	for(int i = 0; i < tcp_packet.limit(); i++){
 //        		String hex = Integer.toHexString(0xff & tcp_packet.get(i));
@@ -200,7 +198,6 @@ public class TCP {
         	Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
         	p1.source = localaddr;
 
-        	System.out.println("At send: " + p1.toString());
         	try{
         		ip.ip_send(p1);
         	} catch(IOException e){
@@ -210,48 +207,49 @@ public class TCP {
         	return true;
         }
         
-        public boolean recv_tcp_packet(){
+        public boolean recv_tcp_packet(TcpPacket tcpp){
         	Packet p = new Packet();
-        	ByteBuffer bb, pseudo;
+        	ByteBuffer pseudo;
         	
         	try{
         		ip.ip_receive(p);
-        		System.out.println("Destination " + p.destination);
-        		System.out.println("Source " + p.source);
-        		System.out.println("Protocol " + p.protocol);
-        		System.out.println("Data");
-        		StringBuffer hexString = new StringBuffer();
-//        		for(int i = 0; i < p.data.length; i++){
-//        			String hex = Integer.toHexString(0xff & p.data[i]);
-//        			if(hex.length() ==  1){
-//        				hexString.append('0');
-//        			}
-//        			hexString.append(hex);
-//        		}
-//        		System.out.print(hexString);
-        		System.out.println(p.toString());
 
         		int pseudoLength = p.length + 12;
-        		if (p.length % 2 == 1)
+        		
+        		if (p.length % 2 == 1)			//in case the number of bytes is odd
         			pseudoLength++;
+        		
         		pseudo = ByteBuffer.allocate(pseudoLength);
-        		pseudo.putInt((int) p.source);
-        		pseudo.putInt((int) p.destination);
+        		
+            	pseudo.put((byte)(p.source & 0xff));
+            	pseudo.put((byte)(p.source >> 8 & 0xff));
+            	pseudo.put((byte)(p.source >> 16 & 0xff));
+            	pseudo.put((byte)(p.source >>> 24));
+
+            	pseudo.put((byte)(p.destination & 0xff));
+            	pseudo.put((byte)(p.destination >> 8 & 0xff));
+            	pseudo.put((byte)(p.destination >> 16 & 0xff));
+            	pseudo.put((byte)(p.destination >>> 24));
+        		
         		pseudo.put((byte) 0);
         		pseudo.put((byte) p.protocol);
         		pseudo.putShort((short) p.length);
+        		
         		pseudo.put(p.data);
+        		
         		if (p.length % 2 == 1){
         			pseudo.put((byte) 0);
         		}
+
+        		tcpp = new TcpPacket(p);
         		
         		long checksum = calculateChecksum(pseudo.array());
-        		System.out.println("Received checksum " + Long.toHexString(checksum));
-        		System.out.println("p.length" + p.length);
+        		if(checksum != 0){
+        			return false;
+        		}
         		
-        		
-        		
-        		
+            	System.out.println("Checksum " + Long.toHexString(checksum));
+            	
         	} catch (IOException e){
         		e.printStackTrace();
         		return false;
