@@ -1,5 +1,8 @@
 package nl.vu.cs.cn;
 
+import java.nio.ByteBuffer;
+import java.util.Vector;
+
 import nl.vu.cs.cn.IP.IpAddress;
 
 public class TcpControlBlock {
@@ -21,7 +24,7 @@ public class TcpControlBlock {
 	public int tcb_our_sequence_number;				//What we want them to ack
 	public int tcb_our_expected_ack;				//What we think they know we know
 	public byte[] tcb_data;							//Static buffer for recv data
-	public byte[] tcb_p_data;						//The undelivered data
+	public Vector<ByteBuffer> tcb_p_data;			//The undelivered data
 	public int tcb_data_left;						//Undelivered data byetes
 	public ConnectionState tcb_state;				//The current connection state
 	
@@ -30,6 +33,6 @@ public class TcpControlBlock {
 		this.tcb_our_sequence_number = (int) Math.random();
 		this.tcb_state = ConnectionState.S_CLOSED;
 		tcb_data = new byte[MAX_BUF_SIZE];
-		tcb_p_data = new byte[MAX_BUF_SIZE];
+		tcb_p_data = new Vector<ByteBuffer>();
 	}
 }
