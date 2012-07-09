@@ -62,9 +62,45 @@ public class TCP {
          * This call blocks until a connection is made.
          */
         public void accept() {
-        	TcpPacket tcpp = new TcpPacket();
+
+        	TcpPacket p = new TcpPacket();
         	
+        	if(this.tcb.tcb_state != ConnectionState.S_CLOSED)
+        		return;
+      
+        	
+        	this.tcb.tcb_state = ConnectionState.S_LISTEN;
+        	
+        	recv_tcp_packet(p);
             // Implement the receive side of the three-way handshake here.
+        	
+        	if(p.checkFlags(TcpPacket.TCP_SYN) && (!p.checkFlags(TcpPacket.TCP_ACK)) && this.tcb.tcb_our_port == p.src_port) {
+        		ByteBuffer bb = ByteBuffer.allocate(20);
+        		
+        		tcb.tcb_their_port = (short)p.src_port;
+        		tcb.tcb_their_ip_addr = (int) p.src_ip;
+        		
+        		bb.putShort(this.tcb.tcb_our_port);
+        		bb.putShort(this.tcb.tcb_their_port);
+        		bb.putInt(this.tcb.tcb_our_sequence_number);
+        		
+        		if(this.tcb.tcb_our_expected_ack == Integer.MAX_VALUE - 1)
+        			this.tcb.tcb_our_expected_ack = 0;
+        		else
+        			this.tcb.tcb_our_sequence_number++;
+        		
+        		bb.putInt((int)(p.ack + 1));
+        		bb.put((byte)0x50);
+        		bb.put((byte)TcpPacket.TCP_SYN_ACK);//TODO funkciq da pravi paketi
+        		
+        		
+//            	recv_tcp_packet(p);
+//            	if((int)p.src_ip == tcb.tcb_their_ip_addr && p.checkFlags(mask)){
+//            		
+//            	}
+//            	
+        		
+        	}
         }
 
         /**

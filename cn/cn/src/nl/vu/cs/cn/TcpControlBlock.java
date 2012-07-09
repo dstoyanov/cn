@@ -14,8 +14,8 @@ public class TcpControlBlock {
 		S_TIMED_OUT, S_CLOSING, S_CLOSE_WAIT, S_LAST_ACK;
 	}
 	
-	public IpAddress tcb_our_ip_addr;				//Our IP address
-	public IpAddress tcb_their_ip_addr;				//Their IP address
+	public int tcb_our_ip_addr;				//Our IP address
+	public int tcb_their_ip_addr;				//Their IP address
 	public short tcb_our_port;						//Our port number
 	public short tcb_their_port;					//Their port number
 	public int tcb_our_sequence_number;				//What we want them to ack
@@ -26,12 +26,10 @@ public class TcpControlBlock {
 	public ConnectionState tcb_state;				//The current connection state
 	
 	public TcpControlBlock(IpAddress tcb_our_ip_addr){
-		this.tcb_our_ip_addr = tcb_our_ip_addr;
-		this.tcb_our_sequence_number = 0;
+		this.tcb_our_ip_addr = tcb_our_ip_addr.getAddress();
+		this.tcb_our_sequence_number = (int) Math.random();
 		this.tcb_state = ConnectionState.S_CLOSED;
 		tcb_data = new byte[MAX_BUF_SIZE];
 		tcb_p_data = new byte[MAX_BUF_SIZE];
-		
-		
 	}
 }
