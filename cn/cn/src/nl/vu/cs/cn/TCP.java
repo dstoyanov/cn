@@ -170,6 +170,8 @@ public class TCP {
         public int read(byte[] buf, int offset, int maxlen) {
 
             // Read from the socket here.
+        	TcpPacket p = new TcpPacket();
+        	recv_tcp_packet(p);
 
             return -1;
         }
@@ -185,6 +187,17 @@ public class TCP {
         public int write(byte[] buf, int offset, int len) {
 
             // Write to the socket here.
+        	ByteBuffer bb = null;
+        	
+        	bb = send_tcp_packet(tcb.tcb_their_ip_addr,
+        			buf,
+        			len,
+        			tcb.tcb_our_port,
+        			tcb.tcb_their_port,
+        			0,
+        			0,
+        			TcpPacket.TCP_SYN);
+        	
 
             return -1;
         }
