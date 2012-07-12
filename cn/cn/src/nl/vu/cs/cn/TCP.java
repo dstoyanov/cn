@@ -154,54 +154,57 @@ public class TCP {
 						&& this.tcb.tcb_our_port == p.dst_port) {
 
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
+					this.tcb.tcb_their_ip_addr = (int)((p.src_ip >> 24) & 0xff);
+					this.tcb.tcb_their_port = (short) p.src_port;
+					this.tcb.tcb_ack = (int) p.seq + 1;
+					this.tcb.tcb_seq = (int) Math.random();
 
-					this.tcb.tcb_their_ip_addr = (int)p.src_ip >> 24 & 0xff;
-			this.tcb.tcb_their_port = (short) p.src_port;
-			this.tcb.tcb_ack = (int) p.seq + 1;
-			this.tcb.tcb_seq = (int) Math.random();
+					//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
+					int count = 0;
 
-//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
-			int count = 0;
+					for(int it = 0; it < 10; it++){
+						bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
+								new byte[0],
+								0,
+								this.tcb.tcb_our_port,
+								this.tcb.tcb_their_port,
+								this.tcb.tcb_seq,
+								this.tcb.tcb_ack,
+								TcpPacket.TCP_SYN_ACK);
 
-			for(int it = 0; it < 10; it++){
-				bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
-						new byte[0],
-						0,
-						this.tcb.tcb_our_port,
-						this.tcb.tcb_their_port,
-						this.tcb.tcb_seq,
-						this.tcb.tcb_ack,
-						TcpPacket.TCP_SYN_ACK);
-				
-//				System.out.println("Accept: SYN/ACK sent");
+						//				System.out.println("Accept: SYN/ACK sent");
 
-				if(bb == null){
-					continue;
-				}
+						if(bb == null){
+							continue;
+						}
 
-				//check if we get 10 timeouts
-				try{
-					if(recv_tcp_packet(p, true))
-						break;
-				} catch(InterruptedException e1){
-					count ++;
-				}
-			}
+						//check if we get 10 timeouts
+						try{
+							if(recv_tcp_packet(p, true))
+								break;
+						} catch(InterruptedException e1){
+							count ++;
+						}
+					}
 
-			if(count == 10){
-//				System.out.println("Accept: Max number timeouts");
-				this.tcb.tcb_state = ConnectionState.S_LISTEN;
-				continue;
-			}
+					if(count == 10){
+						//				System.out.println("Accept: Max number timeouts");
+						this.tcb.tcb_state = ConnectionState.S_LISTEN;
+						continue;
+					}
 
-
-			if((int)p.src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
-					&& p.ack == this.tcb.tcb_seq + 1
-					&& p.seq == this.tcb.tcb_ack + 1){
-				System.out.println("Accept: connected");
-				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-				break;
-			}
+//					System.out.println("IP " + p.src_ip + " " + tcb.tcb_their_ip_addr + "\n Flags " + p.checkFlags(TcpPacket.TCP_ACK) +
+//							"Seq " +  p.ack + " " + (this.tcb.tcb_seq + 1) + "\n" +
+//							"Ack "+ p.seq + " "  + this.tcb.tcb_ack + 1);
+					int tmp_src_ip = (int) ((p.src_ip >> 24) & 0xff);
+					
+					if( tmp_src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
+							&& p.ack == this.tcb.tcb_seq + 1
+							&& p.seq == this.tcb.tcb_ack + 1){
+						System.out.println("Accept: connected");
+						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+						return;
+					}
 				}
 			}
 		}
@@ -225,12 +228,12 @@ public class TCP {
 
 
 			while(num_read < maxlen){
-					try{
-						if(recv_tcp_packet(p, false))
-							break;
-					} catch(InterruptedException e1){
-						e1.printStackTrace();
-					}
+				try{
+					if(recv_tcp_packet(p, false))
+						break;
+				} catch(InterruptedException e1){
+					e1.printStackTrace();
+				}
 
 				send_tcp_packet(this.tcb.tcb_their_ip_addr,
 						new byte[0],
@@ -268,7 +271,7 @@ public class TCP {
 			int left, nbytes = -1;
 			TcpPacket p = new TcpPacket();
 			ByteBuffer sentbb;
-
+			System.out.println("WRITE " + offset + "  " + len + "  " + sent);
 			//check if we are in the correct state
 			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
 					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
@@ -299,7 +302,7 @@ public class TCP {
 							this.tcb.tcb_seq,
 							this.tcb.tcb_ack,
 							TcpPacket.TCP_SYN);
-					
+
 					if(sentbb == null)
 						continue;
 
