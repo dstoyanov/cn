@@ -226,35 +226,92 @@ public class TCP {
 			ByteBuffer bb = ByteBuffer.allocate(maxlen);
 			int num_read = 0;
 
+//			if(maxlen > 0){
+//				while(num_read < maxlen){
+//					try{
+//						if(!recv_tcp_packet(p, false))
+//							return -1;
+//					} catch(InterruptedException e1){
+//						e1.printStackTrace();
+//					}
+//					System.out.println("READ: lenght " + p.data.length);
+//
+//
+//					for(int i = 0; i < p.data.length; i++){
+//						if(p.data[i] == 0xff){			//check for end-of-file
+//							num_read++;
+//							System.out.println("READ return because EOF");
+//							return num_read;
+//						}
+//						bb.put(p.data[i]);
+//						num_read++;
+//					}
+////					bb.put(p.data);
+//					
+//					this.tcb.tcb_ack += num_read;
+//					send_tcp_packet(this.tcb.tcb_their_ip_addr,
+//							new byte[0],
+//							0,
+//							this.tcb.tcb_our_port,
+//							this.tcb.tcb_their_port,
+//							this.tcb.tcb_seq,
+//							(int)p.seq,
+//							TcpPacket.TCP_ACK);
+//				}
+//				bb.get(buf);
+//			} else {
+//				return -1;
+//			}
+//			System.out.println("READ " + buf[0] + " " + buf[1] + " " + buf[2]);
 
+			
+			//TODO in case there is no data and the other side closed???
+			if(maxlen <= 0)
+				return -1;
+			
 			while(num_read < maxlen){
 				try{
-					if(recv_tcp_packet(p, false))
-						break;
-				} catch(InterruptedException e1){
-					e1.printStackTrace();
+					if(!recv_tcp_packet(p, false))
+						return -1;
+				} catch(InterruptedException e){
+					e.printStackTrace();
 				}
-
-				send_tcp_packet(this.tcb.tcb_their_ip_addr,
-						new byte[0],
-						0,
-						this.tcb.tcb_our_port,
-						this.tcb.tcb_their_port,
-						this.tcb.tcb_seq,
-						(int)p.seq,
-						TcpPacket.TCP_ACK);
-
-				for(int i = 0; i < p.data.length; i++){
-					if(p.data[i] == 0xff){			//check for end-of-file
-						num_read++;
-						return num_read;
-					}
-					bb.put(p.data[i]);
-					num_read++;
+				//TODO check retransmitting previous packet
+//				if(p.seq < this.tcb.tcb_ack){
+//					
+//				}
+				
+				if(num_read + p.length > maxlen){
+					int n = maxlen - num_read;
+					bb.put(p.data, 0, n);
+					
+					this.tcb.tcb_ack += n;
+					send_tcp_packet(this.tcb.tcb_their_ip_addr,
+							new byte[0],
+							0,
+							this.tcb.tcb_our_port,
+							this.tcb.tcb_their_port,
+							this.tcb.tcb_seq,
+							this.tcb.tcb_ack,
+							TcpPacket.TCP_ACK);
+					return maxlen;
+				}else{
+					bb.put(p.data, 0, p.length);
+					num_read += p.length;
+					
+					this.tcb.tcb_ack += p.length;
+					send_tcp_packet(this.tcb.tcb_their_ip_addr,
+							new byte[0],
+							0,
+							this.tcb.tcb_our_port,
+							this.tcb.tcb_their_port,
+							this.tcb.tcb_seq,
+							this.tcb.tcb_ack,
+							TcpPacket.TCP_ACK);
 				}
+				//TODO add check for EOF
 			}
-			bb.get(buf);
-
+			
 			return num_read;
 		}
 
@@ -323,9 +380,10 @@ public class TCP {
 				} else{
 					return sent;
 				}
-
+				
+				this.tcb.incrSeq(3);
 				if(p.ack != this.tcb.tcb_seq){	//TODO retransmit or drop connection?
-					System.out.println("WRITE wrong seq");
+					System.out.println("WRITE wrong seq " + p.ack + "  " + this.tcb.tcb_seq);
 					continue;
 				}
 			}

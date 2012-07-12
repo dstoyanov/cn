@@ -26,6 +26,7 @@ public class TcpPacket {
 	public byte[] data;
 	public long src_ip;
 	public long dst_ip;
+	public int length;
 	
 	public void set_all(Packet p){
 		ByteBuffer bb = ByteBuffer.wrap(p.data);
@@ -42,6 +43,8 @@ public class TcpPacket {
 		bb.get();
 		
 		this.flag = bb.get();
+		
+		this.length = p.length;
 
 		this.checksum = bb.getShort() & 0xffff;
 		data = new byte[p.length - 20];
