@@ -189,7 +189,7 @@ public class TCP {
 			}
 
 			if(count == 10){
-				System.out.println("Accept: Max number timeouts");
+//				System.out.println("Accept: Max number timeouts");
 				this.tcb.tcb_state = ConnectionState.S_LISTEN;
 				continue;
 			}
@@ -225,23 +225,12 @@ public class TCP {
 
 
 			while(num_read < maxlen){
-
-				//				if(recv_tcp_packet(p) == false)
-				//					return -1;
-
-				int count = 0;
-				for(int it = 0; it < 10; it++){
 					try{
 						if(recv_tcp_packet(p, false))
 							break;
 					} catch(InterruptedException e1){
-						count ++;
+						e1.printStackTrace();
 					}
-				}
-
-				if(count == 10){
-					return -1;
-				}
 
 				send_tcp_packet(this.tcb.tcb_their_ip_addr,
 						new byte[0],
@@ -278,15 +267,18 @@ public class TCP {
 			int sent = 0;
 			int left, nbytes = -1;
 			TcpPacket p = new TcpPacket();
+			ByteBuffer sentbb;
 
 			//check if we are in the correct state
 			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
 					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
-					this.tcb.tcb_state == ConnectionState.S_CLOSED)
+					this.tcb.tcb_state == ConnectionState.S_CLOSED){
+				System.out.println("WRITE not in correct state");
 				return -1;
-
+			}
 
 			while(sent < len) {
+				System.out.println("WRITE loop " + sent + " " + len);
 				left = len - sent;
 
 				if(left > TcpPacket.MAX_PACKET_SIZE)
@@ -299,7 +291,7 @@ public class TCP {
 
 				int count = 0;
 				for(int it = 0; it < 10; it++){
-					send_tcp_packet(this.tcb.tcb_their_ip_addr,
+					sentbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							tmp,
 							nbytes,
 							this.tcb.tcb_our_port,
@@ -307,11 +299,17 @@ public class TCP {
 							this.tcb.tcb_seq,
 							this.tcb.tcb_ack,
 							TcpPacket.TCP_SYN);
+					
+					if(sentbb == null)
+						continue;
 
 					try{
-						if(recv_tcp_packet(p, true))
+						if(recv_tcp_packet(p, true)){
+							System.out.println("WRITE: ACK received");
 							break;
+						}
 					} catch(InterruptedException e1){
+						System.out.println("WRITE: Timeout ACK");
 						count ++;
 					}
 				}
@@ -323,8 +321,10 @@ public class TCP {
 					return sent;
 				}
 
-				if(p.ack != this.tcb.tcb_seq)	//TODO retransmit or drop connection?
+				if(p.ack != this.tcb.tcb_seq){	//TODO retransmit or drop connection?
+					System.out.println("WRITE wrong seq");
 					continue;
+				}
 			}
 			return nbytes;
 		}

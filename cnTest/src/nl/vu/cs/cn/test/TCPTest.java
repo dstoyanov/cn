@@ -14,8 +14,6 @@ public class TCPTest extends TestCase {
 		boolean result;
 		byte[] rcv_buf = new byte[3];
 
-
-
 		Socket s1 = t1.socket();
 
 		System.out.println("Sockets created");
@@ -23,12 +21,11 @@ public class TCPTest extends TestCase {
 		Test1 test1 = new Test1();
 		new Thread(test1).start();
 
-		Thread.sleep(4000);
 
 		result = s1.connect(IpAddress.getAddress(11),1234);
 		
 		System.out.println("Connect: Result " + result);
-
+//		Thread.sleep(4000);
 //		int n = s1.read(rcv_buf, 0, 3);
 //
 //		System.out.println("Number bytes read " + n);
@@ -46,9 +43,14 @@ public class TCPTest extends TestCase {
 				Socket s2 = t2.socket(1234);
 				s2.accept();
 				System.out.println("connected");
-//				byte[] buf = {(byte) 1, (byte) 2, (byte) 3};
-//				int n =	s2.write(buf, 0, 3);
-//				System.out.println("number bytes written " + n);
+
+				byte[] buf = {(byte) 1, (byte) 2, (byte) 3};
+				
+
+				int n =	s2.write(buf, 0, 3);
+				System.out.println("number bytes written " + n);
+//				
+//				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
