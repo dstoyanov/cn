@@ -2,9 +2,6 @@ package nl.vu.cs.cn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Timer;
-import java.util.TimerTask;
-
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.IP.Packet;
 import nl.vu.cs.cn.TcpControlBlock.ConnectionState;
@@ -26,20 +23,13 @@ public class TCP {
 
 		/* Hint: You probably need some socket specific data. */
 		private TcpControlBlock tcb;
-		private boolean timeout;
-		
+
 		/* A new thread for detecting timeouts */
-		private TimerTask timeout_task = new TimerTask(){
-			public void run(){
-				timeout = true;
-			}
-		};
 
 		/**
 		 * Construct a client socket.
 		 */
 		private Socket() {
-			this.timeout = false;
 			tcb = new TcpControlBlock(ip.getLocalAddress());
 		}
 
@@ -49,9 +39,8 @@ public class TCP {
 		 * @param port the local port to use
 		 */
 		private Socket(int port) {
-			this.timeout = false;
 			tcb = new TcpControlBlock(ip.getLocalAddress());
-			//        	tcb.tcb_our_port = port;
+			this.tcb.tcb_our_port = (short) port;
 		}
 
 		/**
@@ -64,12 +53,7 @@ public class TCP {
 		public boolean connect(IpAddress dst, int port) {
 			ByteBuffer bb;
 			TcpPacket p = new TcpPacket();
-			Timer timer = new Timer();
-			int num_timeouts = 0;
-			
-			this.timeout = false;
 
-			
 			// Implement the connection side of the three-way handshake here.
 
 			if(this.tcb.tcb_state != ConnectionState.S_CLOSED){
@@ -77,65 +61,68 @@ public class TCP {
 				return false;
 			}
 
+			this.tcb.tcb_their_ip_addr = dst.getAddress();
+			this.tcb.tcb_our_ip_addr = (int) ip.getLocalAddress().getAddress();
 			this.tcb.tcb_our_port = (short) Math.random();
 			this.tcb.tcb_their_port = (short) port;
-			this.tcb.tcb_our_sequence_number = (int) Math.random();
-			this.tcb.tcb_our_expected_ack = this.tcb.tcb_our_sequence_number + 1;
+			System.out.println("Connect: Ports " + this.tcb.tcb_their_port  + "   "  + port);
 
+			this.tcb.tcb_seq = (int) Math.random();
+			this.tcb.tcb_ack = 0;
 
-			System.out.println("First packet");
 			//send the first SYN packet from the three-way handshake
-			bb = send_tcp_packet(dst.getAddress(),
-					new byte[0],
-					0,
-					(short) tcb.tcb_our_port,
-					(short) this.tcb.tcb_their_port,
-					this.tcb.tcb_our_sequence_number,
-					this.tcb.tcb_our_expected_ack,
-					TcpPacket.TCP_SYN);
-
-
-			if(bb == null)			// if the send is not successful return false 
-				return false;
-
-			this.tcb.tcb_state = ConnectionState.S_SYN_SENT;
-//			this.tcb.tcb_p_data.add(bb);				//add the byte buffer to a vector until we get an ack
-
-			while(num_timeouts < 10){
-
-				timer.schedule(timeout_task, 1000);
-				recv_tcp_packet(p);
-				timer.cancel();
-
-				if(this.timeout){
-					num_timeouts++;
-					this.timeout = false;
-				} else{
-					break;
-				}
-			}
-			
-			if(num_timeouts == 10)
-				return false;
-
-			System.out.println("Packet received");
-
-			if(p.checkFlags(TcpPacket.TCP_SYN_ACK) && p.dst_port == this.tcb.tcb_our_port
-					&& p.src_port == this.tcb.tcb_their_port && this.tcb.tcb_our_expected_ack == p.ack){
-				tcb.tcb_p_data.remove(bb);
-
+			//check if we get 10 timeouts
+			int count = 0;
+			for(int it = 0; it < 10; it++){
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
 						(short) tcb.tcb_our_port,
 						(short) this.tcb.tcb_their_port,
-						this.tcb.tcb_our_sequence_number,
-						this.tcb.tcb_our_expected_ack,
+						this.tcb.tcb_seq,
+						this.tcb.tcb_ack,
+						TcpPacket.TCP_SYN);
+
+				if(bb == null){			// if the send is not successful return false 
+					System.out.println("Connect: bb null");
+					return false;
+				}
+
+				this.tcb.tcb_state = ConnectionState.S_SYN_SENT;
+
+
+				try{
+					if(recv_tcp_packet(p, true)){
+						System.out.println("Connect: SYN/ACK packet received");
+						break;
+					}
+				} catch(InterruptedException e1){
+					count ++;
+				}
+			}
+
+			if(count == 10){
+				System.out.println("Connect: Max number of timeouts (SYN/ACK)");
+				return false;
+			}
+
+			if(p.checkFlags(TcpPacket.TCP_SYN_ACK) && p.dst_port == this.tcb.tcb_our_port
+					&& p.src_port == this.tcb.tcb_their_port && this.tcb.tcb_seq + 1 == p.ack){
+
+				this.tcb.incrSeq(1);
+				this.tcb.tcb_ack = (int) p.seq + 1;
+				bb = send_tcp_packet(dst.getAddress(),
+						new byte[0],
+						0,
+						(short) this.tcb.tcb_our_port,
+						(short) this.tcb.tcb_their_port,
+						this.tcb.tcb_seq,
+						this.tcb.tcb_ack,
 						TcpPacket.TCP_ACK);
 
 				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+				return true;
 			}
-
 
 			return false;
 		}
@@ -148,7 +135,6 @@ public class TCP {
 
 			TcpPacket p = new TcpPacket();
 			ByteBuffer bb = null;
-			Timer timer = new Timer();
 
 
 			if(this.tcb.tcb_state != ConnectionState.S_CLOSED)
@@ -157,50 +143,69 @@ public class TCP {
 			this.tcb.tcb_state = ConnectionState.S_LISTEN;
 
 			while(true){
-				
-				recv_tcp_packet(p);
 
-				if(p.checkFlags(TcpPacket.TCP_SYN) && (!p.checkFlags(TcpPacket.TCP_ACK)) && this.tcb.tcb_our_port == p.src_port) {
+				try{
+					recv_tcp_packet(p, false);				//does not timeout
+				}catch(InterruptedException e){
+					e.printStackTrace();					//not possible to get here
+				}
+
+				if(p.checkFlags(TcpPacket.TCP_SYN) && (!p.checkFlags(TcpPacket.TCP_ACK))
+						&& this.tcb.tcb_our_port == p.dst_port) {
+
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
 
-					this.tcb.tcb_their_ip_addr = (int) p.src_ip;
-					this.tcb.tcb_their_port = (short) p.src_port;
-					this.tcb.tcb_our_expected_ack = (int) p.seq_number + 1;
-					this.tcb.tcb_our_sequence_number = (int) Math.random();
+					this.tcb.tcb_their_ip_addr = (int)p.src_ip >> 24 & 0xff;
+			this.tcb.tcb_their_port = (short) p.src_port;
+			this.tcb.tcb_ack = (int) p.seq + 1;
+			this.tcb.tcb_seq = (int) Math.random();
 
-					bb = this.send_tcp_packet(ip.getLocalAddress().getAddress(),
-							new byte[0],
-							0,
-							this.tcb.tcb_our_port,
-							this.tcb.tcb_their_port,
-							this.tcb.tcb_our_sequence_number,
-							this.tcb.tcb_our_expected_ack,
-							TcpPacket.TCP_SYN_ACK);
+//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
+			int count = 0;
 
-					if(bb == null){
-						//TODO break the loop???
-					}
+			for(int it = 0; it < 10; it++){
+				bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
+						new byte[0],
+						0,
+						this.tcb.tcb_our_port,
+						this.tcb.tcb_their_port,
+						this.tcb.tcb_seq,
+						this.tcb.tcb_ack,
+						TcpPacket.TCP_SYN_ACK);
+				
+//				System.out.println("Accept: SYN/ACK sent");
 
-					timer.schedule(this.timeout_task, 1000);
-					recv_tcp_packet(p);
-					timer.cancel();
-					
-					if(timeout){
-						this.tcb.tcb_state = ConnectionState.S_LISTEN;
-						continue;
-					}
-					
-					if((int)p.src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
-							&& p.ack == this.tcb.tcb_our_sequence_number + 1
-							&& p.seq_number == this.tcb.tcb_our_expected_ack + 1){
+				if(bb == null){
+					continue;
+				}
 
-						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+				//check if we get 10 timeouts
+				try{
+					if(recv_tcp_packet(p, true))
 						break;
-					}
+				} catch(InterruptedException e1){
+					count ++;
+				}
+			}
+
+			if(count == 10){
+				System.out.println("Accept: Max number timeouts");
+				this.tcb.tcb_state = ConnectionState.S_LISTEN;
+				continue;
+			}
+
+
+			if((int)p.src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
+					&& p.ack == this.tcb.tcb_seq + 1
+					&& p.seq == this.tcb.tcb_ack + 1){
+				System.out.println("Accept: connected");
+				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+				break;
+			}
 				}
 			}
 		}
-	//TODO check in read and write if the ports are correct	
+		//TODO check in read and write if the ports are correct	
 
 		/**
 		 * Reads bytes from the socket into the buffer.
@@ -217,29 +222,39 @@ public class TCP {
 			TcpPacket p = new TcpPacket();
 			ByteBuffer bb = ByteBuffer.allocate(maxlen);
 			int num_read = 0;
-			Timer timer = new Timer();
 
-			
-			this.timeout = false;
-			
+
 			while(num_read < maxlen){
 
-				if(recv_tcp_packet(p) == false)
+				//				if(recv_tcp_packet(p) == false)
+				//					return -1;
+
+				int count = 0;
+				for(int it = 0; it < 10; it++){
+					try{
+						if(recv_tcp_packet(p, false))
+							break;
+					} catch(InterruptedException e1){
+						count ++;
+					}
+				}
+
+				if(count == 10){
 					return -1;
-				
+				}
+
 				send_tcp_packet(this.tcb.tcb_their_ip_addr,
 						new byte[0],
 						0,
 						this.tcb.tcb_our_port,
 						this.tcb.tcb_their_port,
-						this.tcb.tcb_our_sequence_number,
-						(int)p.seq_number,
+						this.tcb.tcb_seq,
+						(int)p.seq,
 						TcpPacket.TCP_ACK);
-				
+
 				for(int i = 0; i < p.data.length; i++){
 					if(p.data[i] == 0xff){			//check for end-of-file
-						num_read += i;
-						bb.get(buf);
+						num_read++;
 						return num_read;
 					}
 					bb.put(p.data[i]);
@@ -247,7 +262,7 @@ public class TCP {
 				}
 			}
 			bb.get(buf);
-			
+
 			return num_read;
 		}
 
@@ -262,57 +277,54 @@ public class TCP {
 		public int write(byte[] buf, int offset, int len) {
 			int sent = 0;
 			int left, nbytes = -1;
-			Timer timer = new Timer();
 			TcpPacket p = new TcpPacket();
-			int num_timeouts = 0;
-			
-			this.timeout = false;
-			
+
+			//check if we are in the correct state
 			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
 					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
 					this.tcb.tcb_state == ConnectionState.S_CLOSED)
 				return -1;
-			
-			
-			while(sent < (len - offset)){
-				left = len - sent - offset;
+
+
+			while(sent < len) {
+				left = len - sent;
 
 				if(left > TcpPacket.MAX_PACKET_SIZE)
 					nbytes = TcpPacket.MAX_PACKET_SIZE;
 				else
 					nbytes = left;
-				
-				byte[] tmp = new byte[TcpPacket.MAX_PACKET_SIZE];
-				System.arraycopy(buf, sent+offset, tmp, 0, nbytes);
-				
-				while(num_timeouts < 10){
 
+				byte[] tmp = new byte[nbytes];
+				System.arraycopy(buf, sent+offset, tmp, sent, nbytes);
+
+				int count = 0;
+				for(int it = 0; it < 10; it++){
 					send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							tmp,
 							nbytes,
 							this.tcb.tcb_our_port,
 							this.tcb.tcb_their_port,
-							this.tcb.tcb_our_sequence_number,
-							this.tcb.tcb_our_expected_ack,
+							this.tcb.tcb_seq,
+							this.tcb.tcb_ack,
 							TcpPacket.TCP_SYN);
 
-
-					timer.schedule(timeout_task, 1000);
-					recv_tcp_packet(p);
-					timer.cancel();
-					
-					if(p.ack != this.tcb.tcb_our_sequence_number)	//TODO retransmit or drop connection?
-						continue;
-
-					if(this.timeout){
-						num_timeouts++;
-						this.timeout = false;
-					} else{
-						this.tcb.tcb_our_sequence_number += nbytes;
-						sent += nbytes;
-						break;
+					try{
+						if(recv_tcp_packet(p, true))
+							break;
+					} catch(InterruptedException e1){
+						count ++;
 					}
 				}
+
+				if(count != 10){
+					this.tcb.tcb_seq += nbytes;
+					sent += nbytes;
+				} else{
+					return sent;
+				}
+
+				if(p.ack != this.tcb.tcb_seq)	//TODO retransmit or drop connection?
+					continue;
 			}
 			return nbytes;
 		}
@@ -330,7 +342,9 @@ public class TCP {
 			return false;
 		}
 
-		private ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, short src_port,
+		//		private int count = 0;
+
+		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, short src_port,
 				short dst_port, int seq_number, int ack_number, byte flags){
 
 			ByteBuffer pseudo;
@@ -368,10 +382,15 @@ public class TCP {
 
 			pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 4 empty bits
 
-			byte mask = (byte) (flags & 0x1b);
-			mask |= (1 << 3) & 0xff;
+			//			byte mask = (byte) (flags & 0x1b);
+			//			mask |= (1 << 3) & 0xff;
 
-			System.out.println("mask " + (int)mask);
+			byte mask = (byte)(flags & ~(TcpPacket.TCP_URG | TcpPacket.TCP_RST));
+			mask |= TcpPacket.TCP_PUSH;
+
+			//			System.out.println("Packet number " + count + " mask " + Byte.toString(mask));
+			//			count++;
+			//			System.out.println("mask " + (int)mask);
 
 			pseudo.put(mask);
 			pseudo.putShort((short) 8192);	//Window size equal to the maximal size of a packet	
@@ -384,7 +403,7 @@ public class TCP {
 			}
 
 			long checksum = calculateChecksum(pseudo.array());
-			System.out.println("Checksum " + Long.toHexString(checksum));
+			//			System.out.println("Checksum " + Long.toHexString(checksum));
 
 			tcp_packet.putShort(src_port);
 			tcp_packet.putShort(dst_port);
@@ -393,15 +412,15 @@ public class TCP {
 			tcp_packet.put((byte) 0x50);
 
 			tcp_packet.put(mask);
-			tcp_packet.putShort((short) 1);	//Window size
+			tcp_packet.putShort((short) 8192);	//Window size
 
 			tcp_packet.putShort((short) checksum);
 			tcp_packet.putShort((short) 0); //Urgent pointer
 			tcp_packet.put(buf);
 
 
-//			System.out.println(tcp_packet);
-//			System.out.println("Local address " + ip.getLocalAddress().toString());
+			//			System.out.println(tcp_packet);
+			//			System.out.println("Local address " + ip.getLocalAddress().toString());
 
 			//        	StringBuffer hexString = new StringBuffer();
 			//        	for(int i = 0; i < tcp_packet.limit(); i++){
@@ -413,10 +432,11 @@ public class TCP {
 			//        	}
 			//        	
 			//        		System.out.print(hexString);
-
+			//			System.out.println("Send: " + length);
 			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
 			p1.source = localaddr;
-			
+			//			System.out.println(p1.toString());
+
 			try{
 				ip.ip_send(p1);
 			} catch(IOException e){
@@ -426,12 +446,15 @@ public class TCP {
 			return tcp_packet;
 		}
 
-		private boolean recv_tcp_packet(TcpPacket tcpp){
+		public boolean recv_tcp_packet (TcpPacket tcpp, boolean timeout) throws InterruptedException{
 			Packet p = new Packet();
 			ByteBuffer pseudo;
 
 			try{
-				ip.ip_receive(p);
+				if(timeout == true)
+					ip.ip_receive_timeout(p, 1);
+				else
+					ip.ip_receive(p);
 
 				int pseudoLength = p.length + 12;
 
@@ -454,20 +477,24 @@ public class TCP {
 				pseudo.put((byte) p.protocol);
 				pseudo.putShort((short) p.length);
 
+				//				System.out.println(p.source + "  " + p.destination + "  " + p.protocol + " " + p.length + "  " + p.data);
+
+
 				pseudo.put(p.data);
 
 				if (p.length % 2 == 1){
 					pseudo.put((byte) 0);
 				}
 
-				tcpp = new TcpPacket(p);
+				tcpp.set_all(p);
 
 				long checksum = calculateChecksum(pseudo.array());
 				if(checksum != 0){
+					System.out.println("Recv_tcp_packet: checksum is not 0 " + checksum);
 					return false;
 				}
 
-				System.out.println("Checksum " + Long.toHexString(checksum));
+				//				System.out.println("Checksum " + Long.toHexString(checksum));
 
 			} catch (IOException e){
 				e.printStackTrace();
