@@ -37,19 +37,38 @@ public class TcpPacket {
 		this.src_port = bb.getShort() & 0xffff;
 		this.dst_port = bb.getShort() & 0xffff;
 		
-		this.seq = bb.getInt() & 0xffffffff;
-		this.ack = bb.getInt() & 0xffffffff;
+		this.seq = (int) bb.getInt() & 0xffffffff;
+		this.ack = (int) bb.getInt() & 0xffffffff;
+		
+//		System.out.println("Packet: seq " + this.seq + "  " + this.ack );
 		
 		bb.get();
 		
 		this.flag = bb.get();
-		
-		this.length = p.length;
+		bb.getShort();						//window size
+		this.length = p.length - 20;		//the length of the data, 20 is the length of the TCP header
 
-		this.checksum = bb.getShort() & 0xffff;
+		this.checksum = bb.getShort() & 0xffff;	//checksum	
+		bb.getShort();							//urgent pointer
+		
 		data = new byte[p.length - 20];
-		bb.get(data);
+//		bb.get(data, 20, this.length);
 //		System.out.println("Data length " + data.length + "  " + p.length);
+		
+//		byte b = bb.get();
+//		System.out.println("PACKET: ");
+//		System.out.println(b);
+//		b = bb.get();
+//		System.out.println(b);
+		
+		bb.get(data);
+		
+		System.out.print("PACKET: ");
+		for(int i = 0; i < this.length; i++)
+			System.out.print(data[i] + "  ");
+		System.out.print("\n");
+		
+		
 	}
 //	public boolean checkFlags(byte mask) {
 //		if ((mask & this.flag) == mask) {

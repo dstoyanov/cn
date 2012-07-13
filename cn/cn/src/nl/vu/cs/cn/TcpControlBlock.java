@@ -29,9 +29,9 @@ public class TcpControlBlock {
 		this.tcb_state = ConnectionState.S_CLOSED;
 		tcb_p_data = new Vector<ByteBuffer>();
 	}
-	
+	//TODO FIX
 	public long incrSeq(int inc) {
-		this.tcb_seq= (this.tcb_ack + inc) % Integer.MAX_VALUE*2;
-		return this.tcb_ack;
+		this.tcb_seq= (this.tcb_seq + inc) % (Integer.MAX_VALUE * 2);
+		return this.tcb_seq;
 	}
 }

@@ -25,10 +25,15 @@ public class TCPTest extends TestCase {
 		result = s1.connect(IpAddress.getAddress(11),1234);
 		
 		System.out.println("Connect: Result " + result);
-//		Thread.sleep(4000);
-//		int n = s1.read(rcv_buf, 0, 3);
-//
-//		System.out.println("Number bytes read " + n);
+		Thread.sleep(4000);
+		int n = s1.read(rcv_buf, 0, 3);
+		
+		System.out.print("Reading Buff ");
+		for(int i = 0; i < 3; i++){
+			System.out.print(rcv_buf[i] + "  ");
+		}
+		
+		System.out.println("Number bytes read " + n);
 	}
 
 	public class Test1 implements Runnable{
@@ -44,13 +49,16 @@ public class TCPTest extends TestCase {
 				s2.accept();
 				System.out.println("connected");
 
-				byte[] buf = {(byte) 1, (byte) 2, (byte) 3};
-				
+				byte[] buf = {(byte) 0x01, (byte) 0x02, (byte) 0x03};
 
+				System.out.print("Writing Buff ");
+				for(int i = 0; i < 3; i++){
+
+					System.out.print(buf[i] + "  ");
+				}
+				
 				int n =	s2.write(buf, 0, 3);
 				System.out.println("number bytes written " + n);
-//				
-//				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
