@@ -226,7 +226,7 @@ public class TCP {
 				}
 			}
 		}
-		//TODO check in read and write if the ports are correct	
+		//TODO check in read and write if the ports and IPs are correct	
 
 		/**
 		 * Reads bytes from the socket into the buffer.
@@ -256,9 +256,6 @@ public class TCP {
 					e.printStackTrace();
 				}
 				//TODO check retransmitting previous packet
-//				System.out.println("READ  seq1 " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
-
-//				System.out.println("READ length " + p.length + " " + maxlen + " " + num_read);
 
 				if(num_read + p.length > maxlen){
 					int n = maxlen - num_read;
@@ -280,15 +277,6 @@ public class TCP {
 					
 					this.tcb.tcb_ack += p.length;
 	
-					
-					
-//					System.out.print("Read Buff ");
-//					for(int i = 0; i < 3; i++){
-//						System.out.print(p.data[i] + "  ");
-//					}
-					
-					
-					
 					send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							new byte[0],
 							0,
@@ -298,12 +286,21 @@ public class TCP {
 							this.tcb.tcb_ack,
 							TcpPacket.TCP_ACK);
 				}
-				
-//				System.out.println("READ ack " + this.tcb.tcb_ack + " seq " + this.tcb.tcb_seq);
-				//TODO add check for EOF
 			}
+			
+			bb.rewind();
+			/*Check if EOF is in the buffer*/
+			for(int j = 0; j < buf.length - offset; j++){
+				if(bb.get() == 0xff){
+					bb.rewind();
+					bb.get(buf, offset, j);
+					return j;
+				}
+			}
+			
 			bb.rewind();
 			bb.get(buf, offset, num_read);
+			
 			return num_read;
 		}
 
