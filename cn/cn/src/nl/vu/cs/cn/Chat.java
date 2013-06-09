@@ -5,6 +5,7 @@ import java.io.IOException;
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP.Socket;
 
+import android.R;
 import android.app.ActionBar.LayoutParams;
 import android.app.Activity;
 import android.content.Context;
@@ -33,7 +34,7 @@ public class Chat extends Activity {
 		
 //		LinearLayout ll = (LinearLayout) findViewById(R.id.linearLayout1);
 //		editText1 = (EditText) ll.findViewById(R.id.textInput1);
-		editText1 = (EditText) findViewById(R.id.textInput1);
+//		editText1 = (EditText) findViewById(R.id.textInput1);
 
 //		editText1.setText("lalalla1");
 
