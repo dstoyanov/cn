@@ -46,6 +46,7 @@ public class Chat extends Activity {
 //		    }
 //		});
 		System.out.println("fafa");
+		System.out.println("allalal");
 		
 		
         editText1.setOnFocusChangeListener(new View.OnFocusChangeListener() {
