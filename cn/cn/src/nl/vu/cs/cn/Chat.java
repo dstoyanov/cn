@@ -5,7 +5,7 @@ import java.io.IOException;
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP.Socket;
 
-import android.R;
+//import android.R;
 import android.app.ActionBar.LayoutParams;
 import android.app.Activity;
 import android.content.Context;

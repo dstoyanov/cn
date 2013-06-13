@@ -555,6 +555,9 @@ public class TCP {
 			} catch (IOException e){
 				e.printStackTrace();
 				return false;
+			} catch(InterruptedException e){
+				e.printStackTrace();
+				return false;
 			}
 			return true;
 		}
