@@ -13,7 +13,7 @@ public class TcpPacket {
 	public static final byte TCP_URG = 0x20;
 	public static final byte TCP_SYN_ACK = 0x12;
 	
-	public static final int MAX_PACKET_SIZE = 7840; 
+	public static final int MAX_PACKET_SIZE = 1; 
 //	private static final int MAX_BUF_SIZE = 1000 * MAX_PACKET_SIZE;
 	
 	public int src_port;
