@@ -99,12 +99,12 @@ public class TCP {
 				this.tcb.tcb_state = ConnectionState.S_SYN_SENT;
 
 
-				try{
-					if(recv_tcp_packet(p, true)){
-						System.out.println("Connect: SYN/ACK packet received");
-						break;
-					}
-				} catch(InterruptedException e1){
+
+				if(recv_tcp_packet(p, true)){
+					System.out.println("Connect: SYN/ACK packet received");
+					break;
+
+				} else {
 					count ++;
 				}
 			}
@@ -166,11 +166,9 @@ public class TCP {
 
 			while(true){
 
-				try{
-					recv_tcp_packet(p, false);				//does not timeout
-				}catch(InterruptedException e){
-					e.printStackTrace();					//not possible to get here
-				}
+				
+				recv_tcp_packet(p, false);				//does not timeout
+			
 				
 				System.out.println("ACCEPT: a packet accepted");
 
@@ -207,11 +205,11 @@ public class TCP {
 						}
 
 						//check if we get 10 timeouts
-						try{
-							if(recv_tcp_packet(p, true)){
-								break;
-							}
-						} catch(InterruptedException e1){
+					
+						if(recv_tcp_packet(p, true)){
+							break;
+
+						} else{
 							count ++;
 						}
 					}
@@ -262,12 +260,10 @@ public class TCP {
 			
 			long oldSeq = -1;
 			while(num_read < maxlen){
-				try{
-					if(!recv_tcp_packet(p, false))
-						return -1;
-				} catch(InterruptedException e){
-					e.printStackTrace();
-				}
+				
+				if(!recv_tcp_packet(p, false))
+					return -1;
+			
 				//TODO check retransmitting previous packet
 
 				if (p.seq > oldSeq) {
@@ -377,26 +373,30 @@ public class TCP {
 					System.out.println("Write sending packet " + "seq " +	this.tcb.tcb_seq + " ack" +
 							this.tcb.tcb_ack);
 
-					if(sentbb == null)
+					if(sentbb == null){
+						System.out.println("WRITE: failed to send");
 						continue;
+					}
 
-					try{
-						if(recv_tcp_packet(p, true)){
-							System.out.println("WRITE: ACK received");
-							ackedBytes = p.ack - this.tcb.tcb_seq;
-							break;
-						}
-					} catch(InterruptedException e1){
+					
+					if(recv_tcp_packet(p, true)){
+						System.out.println("WRITE: ACK received");
+						ackedBytes = p.ack - this.tcb.tcb_seq;
+						break;
+					} else {
 						System.out.println("WRITE: Timeout ACK");
-						count ++;
+						count++;
 					}
 				}
+				
+				System.out.println("WRITE: count" + count);
 
 				if(count != 10) {
 					System.out.println("ackedBytes " + ackedBytes + " seq " + this.tcb.tcb_seq + " nbytes " + nbytes);
 					sent += ackedBytes;
 					this.tcb.tcb_seq += ackedBytes;
 				} else {
+					System.out.println("WRITE: return after timeout");
 					return sent;
 				}
 				
@@ -711,7 +711,8 @@ public class TCP {
 			return tcp_packet;
 		}
 
-		public boolean recv_tcp_packet (TcpPacket tcpp, boolean timeout) throws InterruptedException{
+//		public boolean recv_tcp_packet (TcpPacket tcpp, boolean timeout) throws InterruptedException{
+		public boolean recv_tcp_packet (TcpPacket tcpp, boolean timeout) {
 			Packet p = new Packet();
 			ByteBuffer pseudo;
 
