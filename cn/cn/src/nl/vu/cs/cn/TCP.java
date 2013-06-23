@@ -208,7 +208,6 @@ public class TCP {
 					
 						if(recv_tcp_packet(p, true)){
 							break;
-
 						} else{
 							count ++;
 						}
