@@ -56,7 +56,7 @@ public class TcpPacket {
 //		System.out.println("Data length " + data.length + "  " + p.length);
 		
 //		byte b = bb.get();
-		System.out.println("PACKET: ");
+//		System.out.println("PACKET: ");
 //		System.out.println(b);
 //		b = bb.get();
 //		System.out.println(b);
@@ -64,9 +64,9 @@ public class TcpPacket {
 		bb.get(data);
 		
 //		System.out.print("PACKET: ");
-		for(int i = 0; i < this.length; i++)
-			System.out.print(data[i] + "  ");
-		System.out.print("\n");
+//		for(int i = 0; i < this.length; i++)
+//			System.out.print(data[i] + "  ");
+//		System.out.print("\n");
 		
 		
 	}

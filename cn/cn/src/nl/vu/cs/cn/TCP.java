@@ -187,8 +187,7 @@ public class TCP {
 					//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
 					int count = 0;
 
-//					for(int it = 0; it < 10; it++){
-					for(int it = 0; it < 5; it++){
+					for(int it = 0; it < 10; it++){
 						bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
@@ -214,8 +213,7 @@ public class TCP {
 						}
 					}
 
-//					if(count == 10){
-					if(count == 5){
+					if(count == 10){
 //				System.out.println("Accept: Max number timeouts");
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
 						continue;
@@ -417,7 +415,7 @@ public class TCP {
 				
 				
 			}
-			return nbytes;
+			return sent;
 		}
 //		/**
 //		 * Reads bytes from the socket into the buffer.
