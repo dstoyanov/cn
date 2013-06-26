@@ -2,8 +2,6 @@
 <resources>
 
     <string name="app_name">CNPracticum Chat</string>
-    <string name = "edit_message"> Enter a message</string>
     <string name = "send_button"> Send</string>
-    <string name = "text"> </string>
 
 </resources>
