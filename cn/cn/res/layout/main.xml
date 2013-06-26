@@ -15,7 +15,7 @@
         android:layout_height="wrap_content" >
 
         <EditText
-            android:id="@+id/EditText01"
+            android:id="@+id/editText1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -23,12 +23,13 @@
             android:inputType="text" />
 
         <Button
-            android:id="@+id/Button01"
+            android:id="@+id/button01"
             style="?android:attr/buttonStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/send_button" />
+            android:text="@string/send_button"
+            android:onClick="sendMessage1" />
 
     </LinearLayout>
 
@@ -60,7 +61,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/send_button" />
+            android:text="@string/send_button"
+            android:onClick="sendMessage2" />
 
     </LinearLayout>
     
