@@ -248,7 +248,7 @@ public class TCP {
 		 * @return the number of bytes read, or -1 if an error occurs.
 		 */
 		public int read(byte[] buf, int offset, int maxlen) {
-			System.out.println("READ: maxlen " + maxlen);
+			System.out.println("READ: maxlen " + maxlen + " offset " + offset);
 			// Read from the socket here.
 			TcpPacket p = new TcpPacket();
 			ByteBuffer bb = ByteBuffer.allocate(maxlen);
@@ -284,6 +284,9 @@ public class TCP {
 								this.tcb.tcb_seq,
 								this.tcb.tcb_ack,
 								TcpPacket.TCP_ACK);
+						bb.rewind();
+						bb.get(buf, offset, maxlen);
+						System.out.println("READ returning maxlen: " + maxlen);
 						return maxlen;
 					}else{
 						bb.put(p.data, 0, p.length);
@@ -314,12 +317,15 @@ public class TCP {
 				if(bb.get() == 0xff){
 					bb.rewind();
 					bb.get(buf, offset, j);
+					System.out.println("READ: returning j " + j);
 					return j;
 				}
 			}
 			
 			bb.rewind();
+//			bb.get(buf, offset, num_read);
 			bb.get(buf, offset, num_read);
+			System.out.println("READ returning num_read: " + num_read);
 			
 			return num_read;
 		}
