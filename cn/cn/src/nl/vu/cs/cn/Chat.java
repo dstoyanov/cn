@@ -32,18 +32,19 @@ public class Chat extends Activity{
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		System.out.println("booo");
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-
-
-		tv1 = (TextView) findViewById(R.id.textView1);
-		tv2 = (TextView) findViewById(R.id.textView2);
-
-		server = new Server(addr1, port1);
-		client = new Client(addr2, addr1, port1);
-
-		new Thread(server).start();
-		new Thread(client).start();
+//
+//
+//		tv1 = (TextView) findViewById(R.id.textView1);
+//		tv2 = (TextView) findViewById(R.id.textView2);
+//
+//		server = new Server(addr1, port1);
+//		client = new Client(addr2, addr1, port1);
+//
+//		new Thread(server).start();
+//		new Thread(client).start();
 
 	}
 
