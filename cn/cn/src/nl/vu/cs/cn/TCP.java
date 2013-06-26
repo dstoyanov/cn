@@ -177,7 +177,6 @@ public class TCP {
 				if(p.checkFlags(TcpPacket.TCP_SYN) && (!p.checkFlags(TcpPacket.TCP_ACK))
 						&& this.tcb.tcb_our_port == p.dst_port) {
 					System.out.println("ACCEPT: packet matches flags addresses and ports");
-					System.out.println("ACCEPT: packet matches flags addresses and ports");
 
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
 					this.tcb.tcb_their_ip_addr = (int) p.src_ip ;
