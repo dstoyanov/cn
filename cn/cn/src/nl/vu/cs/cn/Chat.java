@@ -65,7 +65,6 @@ public class Chat extends Activity{
 
 	Handler handler = new Handler(){
 		public void handleMessage(Message msg){
-			TextView tv;
 			String text = (String) msg.obj;
 			int dst = msg.arg1;
 
@@ -103,12 +102,15 @@ public class Chat extends Activity{
 		public void run() {
 			Message msg = new Message();
 
+			System.out.println("CONN3");
 			read_socket.accept();
 			write_socket.accept();
 			
-			msg.obj = "Connection Established\n";
-			msg.arg1 = 1;
-			handler.sendMessage(msg);
+			System.out.println("CONN2");
+
+//			msg.obj = "Connection Established\n";
+//			msg.arg1 = 1;
+//			handler.sendMessage(msg);
 			
 			while(true){}
 			//			
@@ -151,10 +153,11 @@ public class Chat extends Activity{
 
 			read_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1);
 			write_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1 + 1);
+			System.out.println("CONN1");
 
-			msg.obj = "Connection Established\n";
-			msg.arg1 = 2;
-			handler.sendMessage(msg);
+//			msg.obj = "Connection Established\n";
+//			msg.arg1 = 2;
+//			handler.sendMessage(msg);
 
 			while(true){}
 			//			tv.append("Connection established.\n");
