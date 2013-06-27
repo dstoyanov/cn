@@ -1,6 +1,8 @@
 package nl.vu.cs.cn;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
@@ -70,8 +72,8 @@ public class TCP {
 			Random generator = new Random();
 			this.tcb.tcb_our_port = (short) generator.nextInt(Short.MAX_VALUE + 1);
 			this.tcb.tcb_their_port = (short) port;
-			System.out.println("Connect: Ports t o" + this.tcb.tcb_their_port  + "   "  + this.tcb.tcb_our_port);
-			System.out.println("Connect: Addr t o" + this.tcb.tcb_their_ip_addr  + "   "  + this.tcb.tcb_our_ip_addr);
+            System.out.println("CONNECT: Ports t " + this.tcb.tcb_their_port  + "  o "  + this.tcb.tcb_our_port);
+            System.out.println("CONNECT: Addr t " + this.tcb.tcb_their_ip_addr  + "  o "  + this.tcb.tcb_our_ip_addr);
 			
 			int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
 			this.tcb.tcb_seq = tmp_seq < 0 ? (-1) * tmp_seq : tmp_seq;
@@ -89,10 +91,10 @@ public class TCP {
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TcpPacket.TCP_SYN);
-				System.out.println("Connect first packet: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
+				System.out.println("CONNECT first packet: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				if(bb == null){			// if the send is not successful return false 
-					System.out.println("Connect: bb null");
+					System.out.println("CONNECT: bb null");
 					return false;
 				}
 
@@ -101,7 +103,7 @@ public class TCP {
 
 
 				if(recv_tcp_packet(p, true)){
-					System.out.println("Connect: SYN/ACK packet received");
+                    System.out.println("CONNECT: SYN/ACK packet received seq " + p.seq + " ack " + p.ack);
 					break;
 
 				} else {
@@ -110,7 +112,7 @@ public class TCP {
 			}
 
 			if(count == 10){
-				System.out.println("Connect: Max number of timeouts (SYN/ACK)");
+				System.out.println("CONNECT: Max number of timeouts (SYN/ACK)");
 				return false;
 			}
 
@@ -129,13 +131,15 @@ public class TCP {
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TcpPacket.TCP_ACK);
-				System.out.println("Connect third packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
+				System.out.println("CONNECT third packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 
 				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+                System.out.println("CONNECT: returning true");
 				return true;
 			}
 
+			System.out.println("CONNECT: returning false");
 			return false;
 		}
 		
@@ -169,11 +173,13 @@ public class TCP {
 				
 				recv_tcp_packet(p, false);				//does not timeout
 			
-				
-				System.out.println("ACCEPT: a packet accepted");
+                System.out.println("ACCEPT: a packet accepted seq " + p.seq + " ack " + p.ack);
+
 
 				if(p.checkFlags(TcpPacket.TCP_SYN) && (!p.checkFlags(TcpPacket.TCP_ACK))
 						&& this.tcb.tcb_our_port == p.dst_port) {
+					
+                    System.out.println("ACCEPT: packet matches flags addresses and ports");
 
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
 					this.tcb.tcb_their_ip_addr = (int) p.src_ip ;
@@ -196,17 +202,19 @@ public class TCP {
 								this.tcb.tcb_seq,
 								this.tcb.tcb_ack,
 								TcpPacket.TCP_SYN_ACK);
-						System.out.println("Accept second packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
+						System.out.println("ACCEPT: sending second packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 						//				System.out.println("Accept: SYN/ACK sent");
 
 						if(bb == null){
+                            System.out.println("ACCEPT: sent returned null");
 							continue;
 						}
 
 						//check if we get 10 timeouts
 					
 						if(recv_tcp_packet(p, true)){
+                            System.out.println("ACCEPT: timeout waiting for ack of second packet");
 							break;
 						} else{
 							count ++;
@@ -214,7 +222,7 @@ public class TCP {
 					}
 
 					if(count == 10){
-//				System.out.println("Accept: Max number timeouts");
+						System.out.println("ACCEPT: Max number timeouts");
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
 						continue;
 					}
@@ -228,7 +236,7 @@ public class TCP {
 							&& p.ack == this.tcb.tcb_seq + 1
 							&& p.seq == this.tcb.tcb_ack){
 						
-						System.out.println("Accept: connected");
+						System.out.println("ACCEPT: connected");
 						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
 						this.tcb.tcb_seq++;			//TODO check if that is correct
 						return;
@@ -261,8 +269,12 @@ public class TCP {
 			long oldSeq = -1;
 			while(num_read < maxlen){
 				
-				if(!recv_tcp_packet(p, false))
-					return -1;
+				if(!recv_tcp_packet(p, false)) {
+					System.out.println("READ: IO exception or invalid checksum");
+					continue;
+//					return -1;
+					
+				}
 				
 				System.out.println("READ: received packet seq " + p.seq + " length "  + p.length);
 			
