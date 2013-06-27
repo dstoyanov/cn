@@ -40,16 +40,15 @@ public class TcpPacket {
 		this.seq = (int) bb.getInt() & 0xffffffff;
 		this.ack = (int) bb.getInt() & 0xffffffff;
 		
-//		System.out.println("Packet: seq " + this.seq + "  " + this.ack );
 		
 		bb.get();
 		
 		this.flag = bb.get();
-		bb.getShort();						//window size
-		this.length = p.length - 20;		//the length of the data, 20 is the length of the TCP header
+		bb.getShort();										//window size
+		this.length = p.length - 20;						//the length of the data, 20 is the length of the TCP header
 
-		this.checksum = bb.getShort() & 0xffff;	//checksum	
-		bb.getShort();							//urgent pointer
+		this.checksum = bb.getShort() & 0xffff;				//checksum	
+		bb.getShort();										//urgent pointer
 		
 		data = new byte[p.length - 20];
 //		bb.get(data, 20, this.length);
@@ -59,7 +58,6 @@ public class TcpPacket {
 //		System.out.println("PACKET: ");
 //		System.out.println(b);
 //		b = bb.get();
-//		System.out.println(b);
 		
 		bb.get(data);
 		
