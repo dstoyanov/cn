@@ -214,13 +214,22 @@ public class TCP {
 						//check if we get 10 timeouts
 					
 						if(recv_tcp_packet(p, true)){
-                            System.out.println("ACCEPT: timeout waiting for ack of second packet");
-							break;
-						} else{
+							int tmp_src_ip = (int) p.src_ip;
+							if(tmp_src_ip  == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
+									&& p.ack == this.tcb.tcb_seq + 1
+									&& p.seq == this.tcb.tcb_ack){
+
+								System.out.println("ACCEPT: connected");
+								this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+								this.tcb.tcb_seq++;			//TODO check if that is correct
+								return;
+							}
+							System.out.println("ACCEPT: timeout waiting for ack of second packet");
 							count ++;
 						}
 					}
 
+					//no need to check count if you reach here
 					if(count == 10){
 						System.out.println("ACCEPT: Max number timeouts");
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
@@ -230,17 +239,20 @@ public class TCP {
 //					System.out.println("IP " + p.src_ip + " " + tcb.tcb_their_ip_addr + "\n Flags " + p.checkFlags(TcpPacket.TCP_ACK) +
 //							"Seq " +  p.ack + " " + (this.tcb.tcb_seq + 1) + "\n" +
 //							"Ack "+ p.seq + " "  + this.tcb.tcb_ack + 1);
-					int tmp_src_ip = (int) p.src_ip;
 					
-					if( tmp_src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
-							&& p.ack == this.tcb.tcb_seq + 1
-							&& p.seq == this.tcb.tcb_ack){
-						
-						System.out.println("ACCEPT: connected");
-						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-						this.tcb.tcb_seq++;			//TODO check if that is correct
-						return;
-					}
+					
+//					moved in loop above
+//					int tmp_src_ip = (int) p.src_ip;
+//					
+//					if( tmp_src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
+//							&& p.ack == this.tcb.tcb_seq + 1
+//							&& p.seq == this.tcb.tcb_ack){
+//						
+//						System.out.println("ACCEPT: connected");
+//						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
+//						this.tcb.tcb_seq++;			//TODO check if that is correct
+//						return;
+//					}
 				}
 			}
 		}
