@@ -12,24 +12,34 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
+/**
+ * The Chat application built on top of the TCP implementation
+ * 
+ * @author Dimo Stoyanov, Plamen Dimitrov
+ */
+
 public class Chat extends Activity{
 
-	Server server;
+	/* The two threads in which the two TCP instances run */
+	Server server;	
 	Client client;
-
+	
+	/* The ports used for the communication between the TCP stacks*/
 	int port1 = 1234;
 	int port2 = 4321;
 
+	/* The addresses of the two stacks (e.g. 192.168.0.1 and 192.168.0.2)*/
 	int addr1 = 1;
 	int addr2 = 2;
 
 	int bufsize = 100;
 
+	/* GUI elements for text display */
 	TextView tv1;
 	TextView tv2;
 
 
-	/** Called when the activity is first created. */
+	/* Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -47,6 +57,10 @@ public class Chat extends Activity{
 
 	}
 
+	/**
+	 * Handler for the onClick button event.
+	 * Sends the entered text trough the socket of the client.
+	 */
 	public void sendMessage1(View view){
 		EditText et = (EditText) findViewById(R.id.editText1);
 //		byte[] message = et.getText().toString().getBytes();
@@ -55,6 +69,11 @@ public class Chat extends Activity{
 		et.setText("text");
 	}
 
+
+	/**
+	 * Handler for the onClick button event.
+	 * Sends the entered text trough the socket of the server.
+	 */
 	public void sendMessage2(View view){
 		EditText et = (EditText) findViewById(R.id.editText2);
 //		byte[] message = et.getText().toString().getBytes();
@@ -63,11 +82,15 @@ public class Chat extends Activity{
 		et.setText("text");
 	}
 
+	
+	/**
+	 * Handler for sending messages between the server and client threads and the 
+	 * GUI thread.
+	 */
 	Handler handler = new Handler(){
 		public void handleMessage(Message msg){
 			String text = (String) msg.obj;
 			int dst = msg.arg1;
-
 
 			if(dst == 1)
 				tv1.append(text);
@@ -77,6 +100,9 @@ public class Chat extends Activity{
 		}
 	};
 
+	/**
+	 * The "Server" for the chat application.
+	 */
 	public class Server implements Runnable{
 
 		private TCP tcp;
@@ -102,15 +128,13 @@ public class Chat extends Activity{
 		public void run() {
 			Message msg = new Message();
 
-			System.out.println("CONN3");
-			read_socket.accept();
 			write_socket.accept();
-			
-			System.out.println("CONN2");
+			read_socket.accept();
 
-//			msg.obj = "Connection Established\n";
-//			msg.arg1 = 1;
-//			handler.sendMessage(msg);
+			
+			msg.obj = "Connection Established\n";
+			msg.arg1 = 1;
+			handler.sendMessage(msg);
 			
 			while(true){}
 			//			
@@ -123,6 +147,10 @@ public class Chat extends Activity{
 		}
 	}
 
+
+	/**
+	 * The "Client" for the chat application
+	 */
 	private class Client implements Runnable{
 
 		private TCP tcp;
@@ -153,11 +181,10 @@ public class Chat extends Activity{
 
 			read_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1);
 			write_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1 + 1);
-			System.out.println("CONN1");
 
-//			msg.obj = "Connection Established\n";
-//			msg.arg1 = 2;
-//			handler.sendMessage(msg);
+			msg.obj = "Connection Established\n";
+			msg.arg1 = 2;
+			handler.sendMessage(msg);
 
 			while(true){}
 			//			tv.append("Connection established.\n");
