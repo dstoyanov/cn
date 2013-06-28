@@ -22,7 +22,7 @@ public class TCPTest extends TestCase {
 		new Thread(test1).start();
 
 
-		result = s1.connect(IpAddress.getAddress(11),1234);
+		result = s1.connect(IpAddress.getAddress("192.168.0." + 11), 1234);
 		
 		System.out.println("Connect: Result " + result);
 		Thread.sleep(4000);
