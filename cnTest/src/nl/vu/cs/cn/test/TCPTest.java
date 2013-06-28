@@ -5,7 +5,6 @@ import java.io.IOException;
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP;
 import nl.vu.cs.cn.TCP.Socket;
-import nl.vu.cs.cn.TcpPacket;
 import junit.framework.TestCase;
 
 public class TCPTest extends TestCase {

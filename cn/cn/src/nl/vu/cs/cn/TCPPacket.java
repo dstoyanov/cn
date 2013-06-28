@@ -4,7 +4,12 @@ import java.nio.ByteBuffer;
 
 import nl.vu.cs.cn.IP.Packet;
 
-public class TcpPacket {
+/**
+ * A class representing a TCP packet.
+ */
+public class TCPPacket {
+
+	/* The TCP header flags */
 	public static final byte TCP_FIN = 0x01;
 	public static final byte TCP_SYN = 0x02;
 	public static final byte TCP_RST = 0x04;
@@ -18,8 +23,8 @@ public class TcpPacket {
 	
 	public int src_port;
 	public int dst_port;
-	public long seq;
-	public long ack;
+	public int seq;
+	public int ack;
 	public short header_length;
 	public byte flag;
 	public int checksum;
@@ -28,18 +33,26 @@ public class TcpPacket {
 	public long dst_ip;
 	public int length;
 	
-	public void set_all(Packet p){
+	
+	public TCPPacket(){}
+	
+	/**
+	 * Reads the payload and the header of an IP packet and
+	 * sets the corresponding values in a TCP packet
+	 * 
+	 *  @param p the IP packet to read
+	 */
+	public void ip2tcp(Packet p){
 		ByteBuffer bb = ByteBuffer.wrap(p.data);
 
-		this.src_ip = p.source & 0xffffffff;
-		this.dst_ip = p.destination & 0xffffffff;
+		this.src_ip = p.source;
+		this.dst_ip = p.destination;
 		
-		this.src_port = bb.getShort() & 0xffff;
-		this.dst_port = bb.getShort() & 0xffff;
+		this.src_port = bb.getShort();
+		this.dst_port = bb.getShort();
 		
-		this.seq = (int) bb.getInt() & 0xffffffff;
-		this.ack = (int) bb.getInt() & 0xffffffff;
-		
+		this.seq = bb.getInt();
+		this.ack = bb.getInt();
 		
 		bb.get();
 		
@@ -47,27 +60,14 @@ public class TcpPacket {
 		bb.getShort();										//window size
 		this.length = p.length - 20;						//the length of the data, 20 is the length of the TCP header
 
-		this.checksum = bb.getShort() & 0xffff;				//checksum	
+		this.checksum = bb.getShort();						//checksum	
 		bb.getShort();										//urgent pointer
 		
 		data = new byte[p.length - 20];
-//		bb.get(data, 20, this.length);
-//		System.out.println("Data length " + data.length + "  " + p.length);
-		
-//		byte b = bb.get();
-//		System.out.println("PACKET: ");
-//		System.out.println(b);
-//		b = bb.get();
 		
 		bb.get(data);
-		
-//		System.out.print("PACKET: ");
-//		for(int i = 0; i < this.length; i++)
-//			System.out.print(data[i] + "  ");
-//		System.out.print("\n");
-		
-		
 	}
+	
 //	public boolean checkFlags(byte mask) {
 //		if ((mask & this.flag) == mask) {
 //			return true;
@@ -81,8 +81,4 @@ public class TcpPacket {
 		}
 		return false;
 	}
-	
-
-	
-	public TcpPacket(){}
 }
