@@ -15,8 +15,8 @@ public class TcpControlBlock {
 	
 	public int tcb_our_ip_addr;						//Our IP address
 	public int tcb_their_ip_addr;					//Their IP address
-	public short tcb_our_port;						//Our port number
-	public short tcb_their_port;					//Their port number
+	public int tcb_our_port;						//Our port number
+	public int tcb_their_port;					//Their port number
 	public int tcb_seq;								//What we want them to ack
 	public int tcb_ack;								//What we think they know we know
 	public int tcb_data_left;						//Undelivered data byetes

@@ -42,7 +42,13 @@ public class TCP {
 		 */
 		private Socket(int port) {
 			tcb = new TcpControlBlock(ip.getLocalAddress());
-			this.tcb.tcb_our_port = (short) port;
+			
+			if(port < 0){
+				System.err.println(port + " is not a valid port number.");
+				System.exit(1);
+			}
+			
+			this.tcb.tcb_our_port = port;
 		}
 
 		/**
@@ -68,8 +74,8 @@ public class TCP {
 			
 			
 			Random generator = new Random();
-			this.tcb.tcb_our_port = (short) generator.nextInt(Short.MAX_VALUE + 1);
-			this.tcb.tcb_their_port = (short) port;
+			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE - 1));
+			this.tcb.tcb_their_port = port;
 //            System.out.println("CONNECT: Ports t " + this.tcb.tcb_their_port  + "  o "  + this.tcb.tcb_our_port);
 //            System.out.println("CONNECT: Addr t " + this.tcb.tcb_their_ip_addr  + "  o "  + this.tcb.tcb_our_ip_addr);
 			
@@ -140,6 +146,16 @@ public class TCP {
 			System.out.println("CONNECT: returning false");
 			return false;
 		}
+		
+//		private int EndianSwap32(int x)
+//		{
+//		    int y=0;
+//		    y += (x & 0x000000FF)<<24;
+//		    y += (x & 0xFF000000)>>24;
+//		    y += (x & 0x0000FF00)<<8;
+//		    y += (x & 0x00FF0000)>>8;
+//		    return x;
+//		}
 
 		/**
 		 * Accept a connection on this socket.
@@ -223,6 +239,10 @@ public class TCP {
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
 						continue;
 					}
+//
+//					System.out.println("IP " + p.src_ip + " " + tcb.tcb_their_ip_addr + "\n Flags " + p.checkFlags(TcpPacket.TCP_ACK) +
+//							"Seq " +  p.ack + " " + (this.tcb.tcb_seq + 1) + "\n" +
+//							"Ack "+ p.seq + " "  + this.tcb.tcb_ack + 1);
 					
 					
 //					moved in loop above
@@ -332,8 +352,8 @@ public class TCP {
 			}
 			
 			bb.rewind();
+//			bb.get(buf, offset, num_read);
 			bb.get(buf, offset, num_read);
-			
 			System.out.println("READ returning num_read: " + num_read);
 			
 			return num_read;
@@ -448,8 +468,8 @@ public class TCP {
 
 		//		private int count = 0;
 
-		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, short src_port,
-				short dst_port, int seq_number, int ack_number, byte flags){
+		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
+				int dst_port, int seq_number, int ack_number, byte flags){
 
 			ByteBuffer pseudo;
 			ByteBuffer tcp_packet = ByteBuffer.allocate(length + 20);
@@ -479,8 +499,12 @@ public class TCP {
 			pseudo.put((byte) 6);
 			pseudo.putShort((short) (length + 20));
 
-			pseudo.putShort(src_port);
-			pseudo.putShort(dst_port);
+//			pseudo.putShort((short) src_port);
+//			pseudo.putShort((short) dst_port);
+			
+			pseudo.putChar((char) src_port);
+			pseudo.putChar((char) dst_port);
+			
 			pseudo.putInt(seq_number);
 			pseudo.putInt(ack_number);
 
@@ -509,8 +533,13 @@ public class TCP {
 			long checksum = calculateChecksum(pseudo.array());
 			//			System.out.println("Checksum " + Long.toHexString(checksum));
 
-			tcp_packet.putShort(src_port);
-			tcp_packet.putShort(dst_port);
+//			tcp_packet.putShort((short) src_port);
+//			tcp_packet.putShort((short) dst_port);
+			tcp_packet.putChar((char) src_port);
+			tcp_packet.putChar((char) dst_port);
+			
+			System.out.println("PORTS!!!: " + src_port + " " + dst_port);
+			
 			tcp_packet.putInt(seq_number);
 			tcp_packet.putInt(ack_number);
 			tcp_packet.put((byte) 0x50);
@@ -522,6 +551,21 @@ public class TCP {
 			tcp_packet.putShort((short) 0); //Urgent pointer
 			tcp_packet.put(buf);
 
+
+			//			System.out.println(tcp_packet);
+			//			System.out.println("Local address " + ip.getLocalAddress().toString());
+
+			//        	StringBuffer hexString = new StringBuffer();
+			//        	for(int i = 0; i < tcp_packet.limit(); i++){
+			//        		String hex = Integer.toHexString(0xff & tcp_packet.get(i));
+			//        		if(hex.length() ==  1){
+			//        			hexString.append('0');
+			//        		}
+			//        		hexString.append(hex);
+			//        	}
+			//        	
+			//        		System.out.print(hexString);
+			//			System.out.println("Send: " + length);
 			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
 			p1.source = localaddr;
 			//			System.out.println(p1.toString());
@@ -587,10 +631,10 @@ public class TCP {
 				//				System.out.println("Checksum " + Long.toHexString(checksum));
 
 			} catch (IOException e){
-				e.printStackTrace();
+//				e.printStackTrace();
 				return false;
 			} catch(InterruptedException e){
-				e.printStackTrace();
+//				e.printStackTrace();
 				return false;
 			}
 			return true;

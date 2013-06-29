@@ -23,8 +23,8 @@ public class TCPPacket {
 	
 	public int src_port;
 	public int dst_port;
-	public int seq;
-	public int ack;
+	public long seq;
+	public long ack;
 	public short header_length;
 	public byte flag;
 	public int checksum;
@@ -48,8 +48,8 @@ public class TCPPacket {
 		this.src_ip = p.source;
 		this.dst_ip = p.destination;
 		
-		this.src_port = bb.getShort();
-		this.dst_port = bb.getShort();
+		this.src_port = bb.getChar();
+		this.dst_port = bb.getChar();
 		
 		this.seq = bb.getInt();
 		this.ack = bb.getInt();
