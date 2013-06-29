@@ -17,8 +17,8 @@ public class TcpControlBlock {
 	public int tcb_their_ip_addr;					//Their IP address
 	public int tcb_our_port;						//Our port number
 	public int tcb_their_port;					//Their port number
-	public int tcb_seq;								//What we want them to ack
-	public int tcb_ack;								//What we think they know we know
+	public long tcb_seq;								//What we want them to ack
+	public long tcb_ack;								//What we think they know we know
 	public int tcb_data_left;						//Undelivered data byetes
 	public ConnectionState tcb_state;				//The current connection state
 	
@@ -27,9 +27,11 @@ public class TcpControlBlock {
 		this.tcb_seq = (int) Math.random();
 		this.tcb_state = ConnectionState.S_CLOSED;
 	}
-	//TODO FIX
-	public long incrSeq(int inc) {
-		this.tcb_seq= (this.tcb_seq + inc) % (Integer.MAX_VALUE * 2);
-		return this.tcb_seq;
-	}
+//	//moved in the TCP class add_uints
+//	public long incrSeq(int inc) {
+//		this.tcb_seq= (this.tcb_seq + inc) % (Integer.MAX_VALUE * 2);
+//		return this.tcb_seq;
+//	}
+
+
 }

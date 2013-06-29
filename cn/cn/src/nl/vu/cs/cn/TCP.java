@@ -79,8 +79,8 @@ public class TCP {
 //            System.out.println("CONNECT: Ports t " + this.tcb.tcb_their_port  + "  o "  + this.tcb.tcb_our_port);
 //            System.out.println("CONNECT: Addr t " + this.tcb.tcb_their_ip_addr  + "  o "  + this.tcb.tcb_our_ip_addr);
 			
-			int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
-			this.tcb.tcb_seq = tmp_seq < 0 ? (-1) * tmp_seq : tmp_seq;
+//			int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
+			this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; // results into unsigned
 			this.tcb.tcb_ack = 0;
 
 			//send the first SYN packet from the three-way handshake
@@ -120,13 +120,13 @@ public class TCP {
 				return false;
 			}
 
-			this.tcb.tcb_seq++;
+			this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, 1);
 			if(p.checkFlags(TCPPacket.TCP_SYN_ACK) && p.dst_port == this.tcb.tcb_our_port
 					&& p.src_port == this.tcb.tcb_their_port && this.tcb.tcb_seq == p.ack){
 
 //				this.tcb.incrSeq(1);
 //				this.tcb.tcb_seq++;
-				this.tcb.tcb_ack = (int) p.seq + 1;
+				this.tcb.tcb_ack = add_uints(p.seq , 1);
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
@@ -188,11 +188,12 @@ public class TCP {
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
 					this.tcb.tcb_their_ip_addr = (int) p.src_ip ;
 					this.tcb.tcb_their_port = (short) p.src_port;
-					this.tcb.tcb_ack = (int) p.seq + 1;
+					this.tcb.tcb_ack = add_uints(p.seq, 1);
 					
 					Random generator = new Random();
-					int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
-					this.tcb.tcb_seq = tmp_seq < 0 ? (-1) * tmp_seq : tmp_seq;
+					this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; //unsigned int
+//					int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
+//					this.tcb.tcb_seq = tmp_seq < 0 ? (-1) * tmp_seq : tmp_seq;
 					
 					//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
 					int count = 0;
@@ -220,12 +221,12 @@ public class TCP {
 						if(recv_tcp_packet(p, true)){
 							int tmp_src_ip = (int) p.src_ip;
 							if(tmp_src_ip  == tcb.tcb_their_ip_addr && p.checkFlags(TCPPacket.TCP_ACK)
-									&& p.ack == this.tcb.tcb_seq + 1
+									&& p.ack == add_uints(this.tcb.tcb_seq, 1)
 									&& p.seq == this.tcb.tcb_ack){
 
 								System.out.println("ACCEPT: connected");
 								this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-								this.tcb.tcb_seq++;			//TODO check if that is correct
+								this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, 1);			//TODO check if that is correct
 								return;
 							}
 							System.out.println("ACCEPT: timeout waiting for ack of second packet");
@@ -303,7 +304,7 @@ public class TCP {
 						bb.put(p.data, 0, n);
 					
 //						this.tcb.tcb_ack += n;
-						this.tcb.tcb_ack = (int) (p.seq + n);
+						this.tcb.tcb_ack = add_uints(p.seq, n);
 						System.out.println("READ: num_read + p.length > maxlen sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 						send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
@@ -322,7 +323,7 @@ public class TCP {
 						num_read += p.length;
 						
 //						this.tcb.tcb_ack += p.length;
-						this.tcb.tcb_ack = (int) (p.seq + p.length);
+						this.tcb.tcb_ack = add_uints(p.seq, p.length);
 						
 						System.out.println("READ: sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 						send_tcp_packet(this.tcb.tcb_their_ip_addr,
@@ -421,7 +422,7 @@ public class TCP {
 					
 					if(recv_tcp_packet(p, true)){
 						System.out.println("WRITE: ACK received");
-						ackedBytes = p.ack - this.tcb.tcb_seq;
+						ackedBytes = p.ack -this.tcb.tcb_seq;
 						break;
 					} else {
 						System.out.println("WRITE: Timeout ACK");
@@ -434,7 +435,7 @@ public class TCP {
 				if(count != 10) {
 					System.out.println("WRITE ackedBytes " + ackedBytes + " seq " + this.tcb.tcb_seq + " nbytes " + nbytes);
 					sent += ackedBytes;
-					this.tcb.tcb_seq += ackedBytes;
+					this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, ackedBytes);
 				} else {
 					System.out.println("WRITE: return after timeout - sent " + sent);
 					return sent == 0 ? -1 : sent;
@@ -469,7 +470,7 @@ public class TCP {
 		//		private int count = 0;
 
 		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
-				int dst_port, int seq_number, int ack_number, byte flags){
+				int dst_port, long seq_number, long ack_number, byte flags){
 
 			ByteBuffer pseudo;
 			ByteBuffer tcp_packet = ByteBuffer.allocate(length + 20);
@@ -498,16 +499,20 @@ public class TCP {
 			pseudo.put((byte)0);
 			pseudo.put((byte) 6);
 			pseudo.putShort((short) (length + 20));
-
-//			pseudo.putShort((short) src_port);
-//			pseudo.putShort((short) dst_port);
 			
 			pseudo.putChar((char) src_port);
 			pseudo.putChar((char) dst_port);
 			
-			pseudo.putInt(seq_number);
-			pseudo.putInt(ack_number);
+			pseudo.put((byte)(seq_number >>> 24));
+			pseudo.put((byte)(seq_number >> 16 & 0xff));
+			pseudo.put((byte)(seq_number >> 8 & 0xff));
+			pseudo.put((byte)(seq_number & 0xff));
 
+			pseudo.put((byte)(ack_number >>> 24));
+			pseudo.put((byte)(ack_number >> 16 & 0xff));
+			pseudo.put((byte)(ack_number >> 8 & 0xff));
+			pseudo.put((byte)(ack_number & 0xff));
+			
 			pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 4 empty bits
 
 			//			byte mask = (byte) (flags & 0x1b);
@@ -533,15 +538,19 @@ public class TCP {
 			long checksum = calculateChecksum(pseudo.array());
 			//			System.out.println("Checksum " + Long.toHexString(checksum));
 
-//			tcp_packet.putShort((short) src_port);
-//			tcp_packet.putShort((short) dst_port);
 			tcp_packet.putChar((char) src_port);
 			tcp_packet.putChar((char) dst_port);
 			
-			System.out.println("PORTS!!!: " + src_port + " " + dst_port);
+			tcp_packet.put((byte)(seq_number >>> 24));
+			tcp_packet.put((byte)(seq_number >> 16 & 0xff));
+			tcp_packet.put((byte)(seq_number >> 8 & 0xff));
+			tcp_packet.put((byte)(seq_number & 0xff));
+
+			tcp_packet.put((byte)(ack_number >>> 24));
+			tcp_packet.put((byte)(ack_number >> 16 & 0xff));
+			tcp_packet.put((byte)(ack_number >> 8 & 0xff));
+			tcp_packet.put((byte)(ack_number & 0xff));
 			
-			tcp_packet.putInt(seq_number);
-			tcp_packet.putInt(ack_number);
 			tcp_packet.put((byte) 0x50);
 
 			tcp_packet.put(mask);
@@ -678,6 +687,10 @@ public class TCP {
 			sum = sum & 0xFFFF;
 			return sum;
 
+		}
+		
+		private long add_uints(long x, long y){
+			return ((long) ((long)x + (long)y)) % ((long) ((long) 2 *  (long) Integer.MAX_VALUE));
 		}
 	}
 

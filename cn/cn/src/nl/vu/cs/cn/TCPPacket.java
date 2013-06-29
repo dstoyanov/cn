@@ -51,8 +51,9 @@ public class TCPPacket {
 		this.src_port = bb.getChar();
 		this.dst_port = bb.getChar();
 		
-		this.seq = bb.getInt();
-		this.ack = bb.getInt();
+
+		this.seq = bb.getInt() & 0xFFFFFFFFL;
+		this.ack = bb.getInt() & 0xFFFFFFFFL;
 		
 		bb.get();
 		
