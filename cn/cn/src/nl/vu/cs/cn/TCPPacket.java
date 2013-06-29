@@ -29,8 +29,8 @@ public class TCPPacket {
 	public byte flag;
 	public int checksum;
 	public byte[] data;
-	public long src_ip;
-	public long dst_ip;
+	public int src_ip;
+	public int dst_ip;
 	public int length;
 	
 	

@@ -21,7 +21,7 @@ public class TCPTest extends TestCase {
 		new Thread(test1).start();
 
 
-		result = s1.connect(IpAddress.getAddress("192.168.0." + 11), 1234);
+		result = s1.connect(IpAddress.getAddress("192.168.0." + 11), 62976);
 		
 		System.out.println("Connect: Result " + result);
 		Thread.sleep(4000);
@@ -44,7 +44,7 @@ public class TCPTest extends TestCase {
 			try {
 				TCP t2 = new TCP(11);
 				//create a server socket
-				Socket s2 = t2.socket(1234);
+				Socket s2 = t2.socket(62976);
 				s2.accept();
 				System.out.println("connected");
 

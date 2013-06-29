@@ -73,7 +73,7 @@ public class TCP {
 			
 			
 			Random generator = new Random();
-			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE - 1));
+			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE ));
 			
 			this.tcb.tcb_their_port = port;
 			
@@ -86,8 +86,8 @@ public class TCP {
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
-						(short) tcb.tcb_our_port,
-						(short) this.tcb.tcb_their_port,
+						this.tcb.tcb_our_port,
+						this.tcb.tcb_their_port,
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TCPPacket.TCP_SYN);
@@ -126,8 +126,8 @@ public class TCP {
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
-						(short) this.tcb.tcb_our_port,
-						(short) this.tcb.tcb_their_port,
+						this.tcb.tcb_our_port,
+						this.tcb.tcb_their_port,
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TCPPacket.TCP_ACK);
@@ -173,8 +173,8 @@ public class TCP {
                     System.out.println("ACCEPT: packet matches flags addresses and ports");
 
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
-					this.tcb.tcb_their_ip_addr = (int) p.src_ip ;
-					this.tcb.tcb_their_port = (short) p.src_port;
+					this.tcb.tcb_their_ip_addr = p.src_ip ;
+					this.tcb.tcb_their_port =  p.src_port;
 					this.tcb.tcb_ack = add_uints(p.seq, 1);
 					
 					Random generator = new Random();
@@ -206,8 +206,7 @@ public class TCP {
 						//check if we get 10 timeouts
 					
 						if(recv_tcp_packet(p, true)){
-							int tmp_src_ip = (int) p.src_ip;
-							if(tmp_src_ip  == tcb.tcb_their_ip_addr && p.checkFlags(TCPPacket.TCP_ACK)
+							if(p.src_ip  == tcb.tcb_their_ip_addr && p.checkFlags(TCPPacket.TCP_ACK)
 									&& p.ack == add_uints(this.tcb.tcb_seq, 1)
 									&& p.seq == this.tcb.tcb_ack){
 
@@ -286,7 +285,18 @@ public class TCP {
 			
 				//TODO check retransmitting previous packet
 
-				if (p.seq > oldSeq) {
+				//TODO p.seq <= oldSeq + maxsize
+				
+				System.out.println("READ: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
+						"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
+						"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+						
+				
+				if (p.seq > oldSeq && 
+						p.src_ip == this.tcb.tcb_their_ip_addr &&
+						p.src_port == this.tcb.tcb_their_port &&
+						p.dst_port == this.tcb.tcb_our_port) {
+					
 					if(num_read + p.length > maxlen){
 						int n = maxlen - num_read;
 						bb.put(p.data, 0, n);
@@ -410,9 +420,16 @@ public class TCP {
 					}
 
 					
-					if(recv_tcp_packet(p, true)){
+					if(recv_tcp_packet(p, true) &&
+							p.src_ip == this.tcb.tcb_their_ip_addr &&
+							p.src_port == this.tcb.tcb_their_port &&
+							p.dst_port ==  this.tcb.tcb_our_port){
 						System.out.println("WRITE: ACK received");
-						ackedBytes = p.ack -this.tcb.tcb_seq;
+						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
+								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
+								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+						
+						ackedBytes = p.ack - this.tcb.tcb_seq;
 						break;
 					} else {
 						System.out.println("WRITE: Timeout ACK");
