@@ -1,6 +1,7 @@
 package nl.vu.cs.cn;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP.Socket;
@@ -32,7 +33,7 @@ public class Chat extends Activity{
 	int addr1 = 1;
 	int addr2 = 2;
 
-	int bufsize = 100;
+	int bufsize = 128;
 
 	/* GUI elements for text display */
 	TextView tv1;
@@ -63,10 +64,12 @@ public class Chat extends Activity{
 	 */
 	public void sendMessage1(View view){
 		EditText et = (EditText) findViewById(R.id.editText1);
-//		byte[] message = et.getText().toString().getBytes();
+		byte[] message = et.getText().toString().getBytes();
 
-		//		client.write_socket.write(message, 0, message.length);
-		et.setText("text");
+		if(client.write_socket.write(message, 0, message.length) == -1)
+			tv1.append("Error occured during message transamission\n");
+		
+		et.setText("");
 	}
 
 
@@ -76,10 +79,22 @@ public class Chat extends Activity{
 	 */
 	public void sendMessage2(View view){
 		EditText et = (EditText) findViewById(R.id.editText2);
-//		byte[] message = et.getText().toString().getBytes();
-
-		//		server.write_socket.write(message, 0, message.length);
-		et.setText("text");
+		byte[] message = et.getText().toString().getBytes();
+		
+//		try {
+//			String m = new String(message, "UTF-8");
+//			System.out.println("Message sent: " + m + " size: " + message.length);
+//			System.out.println("Message sent buf: " + message);
+//		} catch (UnsupportedEncodingException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		
+		
+		if(server.write_socket.write(message, 0, message.length) == -1)
+			tv2.append("Error occured during message transmission\n");
+		
+		et.setText("");
 	}
 
 	
@@ -93,9 +108,9 @@ public class Chat extends Activity{
 			int dst = msg.arg1;
 
 			if(dst == 1)
-				tv1.append(text);
+				tv1.append(text + '\n');
 			else if(dst == 2)
-				tv2.append(text);
+				tv2.append(text + '\n');
 
 		}
 	};
@@ -127,6 +142,9 @@ public class Chat extends Activity{
 
 		public void run() {
 			Message msg = new Message();
+			byte[] buf = new byte[bufsize];
+			int nbytes_read;
+			byte[] tmp = null;
 
 			write_socket.accept();
 			read_socket.accept();
@@ -136,14 +154,23 @@ public class Chat extends Activity{
 			msg.arg1 = 1;
 			handler.sendMessage(msg);
 			
-			while(true){}
-			//			
-			//			byte[] buf = new byte[bufsize];
-			//			
-			//			while(true){
-			//				read_socket.read(buf, 0, bufsize);
-			//				this.tv.append(buf.toString());
-			//			}
+//			while((nbytes_read = read_socket.read(buf, 0, bufsize)) !=  -1){
+//
+//				Message msg1 = new Message();
+//				
+//				try {
+//					tmp = new byte[nbytes_read];
+//					System.arraycopy(buf, 0, tmp, 0, nbytes_read);
+//					msg1.obj = new String(tmp, "UTF-8");
+//					
+//				} catch (UnsupportedEncodingException e) {
+//					msg1.obj = "Error during message transmission";
+//				}
+//				
+//				msg1.arg1 = 2;
+//				handler.sendMessage(msg1);
+//			}
+
 		}
 	}
 
@@ -163,7 +190,7 @@ public class Chat extends Activity{
 			try{
 
 				tcp = new TCP(srcAddress);
-				tv2.append("New TCP stack created (192.168.0." + dstAddress + ").\n");
+				tv2.append("New TCP stack created (192.168.0." + srcAddress + ").\n");
 
 				read_socket = tcp.socket();
 				write_socket = tcp.socket();
@@ -178,6 +205,9 @@ public class Chat extends Activity{
 		public void run() {
 
 			Message msg = new Message();
+			byte[] buf = new byte[bufsize];
+			int nbytes_read;
+			byte[] tmp = null;
 
 			read_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1);
 			write_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1 + 1);
@@ -185,19 +215,23 @@ public class Chat extends Activity{
 			msg.obj = "Connection Established\n";
 			msg.arg1 = 2;
 			handler.sendMessage(msg);
+			
+			while((nbytes_read = read_socket.read(buf, 0, bufsize)) !=  -1){
 
-			while(true){}
-			//			tv.append("Connection established.\n");
-			//			
-			//			byte[] buf = new byte[bufsize];
-			//			
-			//			
-			//			//TODO socket.isConnected?
-			//			while(true){
-			//				read_socket.read(buf, 0, bufsize);
-			//
-			//				this.tv.append(buf.toString());
-			//			}
+				Message msg1 = new Message();
+				
+				try {
+					tmp = new byte[nbytes_read];
+					System.arraycopy(buf, 0, tmp, 0, nbytes_read);
+					msg1.obj = new String(tmp, "UTF-8");
+					
+				} catch (UnsupportedEncodingException e) {
+					msg1.obj = "Error during message transmission";
+				}
+				
+				msg1.arg1 = 1;
+				handler.sendMessage(msg1);
+			}
 		}
 	}
 }

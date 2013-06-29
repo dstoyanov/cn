@@ -1,6 +1,7 @@
 package nl.vu.cs.cn;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
@@ -62,8 +63,6 @@ public class TCP {
 			ByteBuffer bb;
 			TCPPacket p = new TCPPacket();
 
-			// Implement the connection side of the three-way handshake here.
-
 			if(this.tcb.tcb_state != ConnectionState.S_CLOSED){
 				System.err.println("The socket is not in the correct state");
 				return false;
@@ -75,12 +74,9 @@ public class TCP {
 			
 			Random generator = new Random();
 			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE - 1));
-			this.tcb.tcb_their_port = port;
-//            System.out.println("CONNECT: Ports t " + this.tcb.tcb_their_port  + "  o "  + this.tcb.tcb_our_port);
-//            System.out.println("CONNECT: Addr t " + this.tcb.tcb_their_ip_addr  + "  o "  + this.tcb.tcb_our_ip_addr);
 			
-//			int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
-			this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; // results into unsigned
+			this.tcb.tcb_their_port = port;
+			
 			this.tcb.tcb_ack = 0;
 
 			//send the first SYN packet from the three-way handshake
@@ -147,15 +143,6 @@ public class TCP {
 			return false;
 		}
 		
-//		private int EndianSwap32(int x)
-//		{
-//		    int y=0;
-//		    y += (x & 0x000000FF)<<24;
-//		    y += (x & 0xFF000000)>>24;
-//		    y += (x & 0x0000FF00)<<8;
-//		    y += (x & 0x00FF0000)>>8;
-//		    return x;
-//		}
 
 		/**
 		 * Accept a connection on this socket.
@@ -240,24 +227,6 @@ public class TCP {
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
 						continue;
 					}
-//
-//					System.out.println("IP " + p.src_ip + " " + tcb.tcb_their_ip_addr + "\n Flags " + p.checkFlags(TcpPacket.TCP_ACK) +
-//							"Seq " +  p.ack + " " + (this.tcb.tcb_seq + 1) + "\n" +
-//							"Ack "+ p.seq + " "  + this.tcb.tcb_ack + 1);
-					
-					
-//					moved in loop above
-//					int tmp_src_ip = (int) p.src_ip;
-//					
-//					if( tmp_src_ip == tcb.tcb_their_ip_addr && p.checkFlags(TcpPacket.TCP_ACK)
-//							&& p.ack == this.tcb.tcb_seq + 1
-//							&& p.seq == this.tcb.tcb_ack){
-//						
-//						System.out.println("ACCEPT: connected");
-//						this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-//						this.tcb.tcb_seq++;			//TODO check if that is correct
-//						return;
-//					}
 				}
 			}
 		}
@@ -286,12 +255,31 @@ public class TCP {
 			
 			long oldSeq = -1;
 			while(num_read < maxlen){
+
 				
-				if(!recv_tcp_packet(p, false)) {
-					System.out.println("READ: IO exception or invalid checksum");
-					continue;
-//					return -1;
-					
+				
+				if(num_read == 0){ 						//if no data received so far block until receive
+					if(!recv_tcp_packet(p, false)) {
+						System.err.println("READ: error occured during packet transmission");
+						continue;
+					}
+				} else{									//do not block otherwise
+					if(!recv_tcp_packet(p, true)) {
+//							String str = new String(buf, "UTF-8");
+//							System.out.println("READ: message " + str + " size: " + num_read);
+//							System.out.println("READ: message buf " + buf);
+
+							bb.rewind();
+							bb.get(buf, offset, num_read);
+							
+//							try {
+//								System.out.println("READ: message " + new String(buf, "UTF-8") );
+//							} catch (UnsupportedEncodingException e) {
+//								// TODO Auto-generated catch block
+//								e.printStackTrace();
+//							}
+						return num_read;
+					}					
 				}
 				
 				System.out.println("READ: received packet seq " + p.seq + " length "  + p.length);
@@ -305,7 +293,7 @@ public class TCP {
 					
 //						this.tcb.tcb_ack += n;
 						this.tcb.tcb_ack = add_uints(p.seq, n);
-						System.out.println("READ: num_read + p.length > maxlen sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
+
 						send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
@@ -314,10 +302,12 @@ public class TCP {
 								this.tcb.tcb_seq,
 								this.tcb.tcb_ack,
 								TCPPacket.TCP_ACK);
+						
 						bb.rewind();
 						bb.get(buf, offset, maxlen);
-						System.out.println("READ returning maxlen: " + maxlen);
+						
 						return maxlen;
+						
 					}else{
 						bb.put(p.data, 0, p.length);
 						num_read += p.length;
@@ -342,15 +332,15 @@ public class TCP {
 			}
 			
 			bb.rewind();
-			/*Check if EOF is in the buffer*/
-			for(int j = 0; j < buf.length - offset; j++){
-				if(bb.get() == 0xff){
-					bb.rewind();
-					bb.get(buf, offset, j);
-					System.out.println("READ: returning j " + j);
-					return j;
-				}
-			}
+//			/*Check if EOF is in the buffer*/
+//			for(int j = 0; j < buf.length - offset; j++){
+//				if(bb.get() == 0xff){
+//					bb.rewind();
+//					bb.get(buf, offset, j);
+//					System.out.println("READ: returning j " + j);
+//					return j;
+//				}
+//			}
 			
 			bb.rewind();
 //			bb.get(buf, offset, num_read);
@@ -441,13 +431,6 @@ public class TCP {
 					return sent == 0 ? -1 : sent;
 				}
 				
-				
-//				if(p.ack != this.tcb.tcb_seq + nbytes){
-//					System.out.println("WRITE wrong seq " + p.ack + "  " + this.tcb.tcb_seq + "  " + nbytes);
-//					this.tcb.tcb_seq += nbytes;
-//					System.out.println("WRITE wrong seq " + p.ack + "  " + this.tcb.tcb_seq + "  " + nbytes);
-//					continue;
-//				}
 				
 				
 			}
@@ -561,20 +544,6 @@ public class TCP {
 			tcp_packet.put(buf);
 
 
-			//			System.out.println(tcp_packet);
-			//			System.out.println("Local address " + ip.getLocalAddress().toString());
-
-			//        	StringBuffer hexString = new StringBuffer();
-			//        	for(int i = 0; i < tcp_packet.limit(); i++){
-			//        		String hex = Integer.toHexString(0xff & tcp_packet.get(i));
-			//        		if(hex.length() ==  1){
-			//        			hexString.append('0');
-			//        		}
-			//        		hexString.append(hex);
-			//        	}
-			//        	
-			//        		System.out.print(hexString);
-			//			System.out.println("Send: " + length);
 			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
 			p1.source = localaddr;
 			//			System.out.println(p1.toString());
@@ -588,7 +557,6 @@ public class TCP {
 			return tcp_packet;
 		}
 
-//		public boolean recv_tcp_packet (TcpPacket tcpp, boolean timeout) throws InterruptedException{
 		public boolean recv_tcp_packet (TCPPacket tcpp, boolean timeout) {
 			Packet p = new Packet();
 			ByteBuffer pseudo;
@@ -619,9 +587,6 @@ public class TCP {
 				pseudo.put((byte) 0);
 				pseudo.put((byte) p.protocol);
 				pseudo.putShort((short) p.length);
-
-				//				System.out.println(p.source + "  " + p.destination + "  " + p.protocol + " " + p.length + "  " + p.data);
-
 
 				pseudo.put(p.data);
 
@@ -658,10 +623,10 @@ public class TCP {
 
 			// Handle all pairs
 			while (length > 1) {
-				// Corrected to include @Andy's edits and various comments on Stack Overflow
 				data = (((buf[i] << 8) & 0xFF00) | ((buf[i + 1]) & 0xFF));
+				
 				sum += data;
-				// 1's complement carry bit correction in 16-bits (detecting sign extension)
+
 				if ((sum & 0xFFFF0000) > 0) {
 					sum = sum & 0xFFFF;
 					sum += 1;
@@ -671,18 +636,16 @@ public class TCP {
 				length -= 2;
 			}
 
-			// Handle remaining byte in odd length buffers
 			if (length > 0) {
-				// Corrected to include @Andy's edits and various comments on Stack Overflow
+
 				sum += (buf[i] << 8 & 0xFF00);
-				// 1's complement carry bit correction in 16-bits (detecting sign extension)
+
 				if ((sum & 0xFFFF0000) > 0) {
 					sum = sum & 0xFFFF;
 					sum += 1;
 				}
 			}
 
-			// Final 1's complement value correction to 16-bits
 			sum = ~sum;
 			sum = sum & 0xFFFF;
 			return sum;
