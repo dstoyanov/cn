@@ -17,6 +17,8 @@ public class TCP {
 
 	/** The underlying IP stack for this TCP stack. */
 	private IP ip;
+	
+	private static Socket instance = null;
 
 	/**
 	 * This class represents a TCP socket.
@@ -942,7 +944,11 @@ public class TCP {
 	 * @return a new socket for this stack
 	 */
 	public Socket socket() {
-		return new Socket();
+		if(instance == null){
+			instance = new Socket();
+			return instance;
+		}else
+			return null;
 	}
 
 	/**
@@ -950,7 +956,12 @@ public class TCP {
 	 * @param port the port to bind the socket to.
 	 */
 	public Socket socket(int port) {
-		return new Socket(port);
+		if(instance == null){
+			instance = new Socket();
+			return instance;
+		} else
+			return null;
+//		return new Socket(port);
 	}
 
 }

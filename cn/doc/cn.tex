@@ -83,7 +83,8 @@ for the lack of the appropriate unsigned types in Java.
 The TCPControlBlock (see Figure~\ref{fig:tcb}) is used to maintain all the information which is needed
 for the Socket functioning. The state of the socket is stored in the control block. Figure~\ref{fig:tcb}
 shows all the states in our implementation; we will not discuss them in details since they are used
-exactly in the way RFC0793 defines them.
+exactly in the way RFC0793 defines them. A socket is uniquely defined based on the control block information.
+
 
 \begin{figure}[h!]
 \centering
@@ -114,8 +115,17 @@ Another helper method implemented in the Socket class is the \textit{add\_uints(
 integers. These integers are represented as longs (64-bit in Java) and the method prevents the addition/subtraction to
 cause overflow or underflow of the 32-bit unsigned integer range.
 
-As required in the assignment, the \textit{connect(), accept(), read(), write() and close()} methods were implemented
-in the Socket class.
+The main methods in the Socket class are \textit{connect(), accept(), read(), write(), close()}. They have one main feature
+in common - the way they deal with errors. To accomplish that, we implemented the state machine from RFC0793. All the methods
+require acknowledgement by the other side of every octet they send. In our implementation acknowledgements are sent only in
+packets that do not contain any data.
+
+
+% Our implementation does not support acknowledgement packets
+% carrying data.
+
+The \textit{connect()} method, as required, is non-blocking and connects a client socket to a server on given \textit{host}
+and \textit{port}.
 
 
 
