@@ -74,6 +74,8 @@ public class TCP {
 			
 			Random generator = new Random();
 			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE ));
+			this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; //unsigned int
+
 			
 			this.tcb.tcb_their_port = port;
 			
@@ -295,7 +297,8 @@ public class TCP {
 				if (p.seq > oldSeq && 
 						p.src_ip == this.tcb.tcb_their_ip_addr &&
 						p.src_port == this.tcb.tcb_their_port &&
-						p.dst_port == this.tcb.tcb_our_port) {
+						p.dst_port == this.tcb.tcb_our_port &&
+						p.seq == this.tcb.tcb_ack) {
 					
 					if(num_read + p.length > maxlen){
 						int n = maxlen - num_read;
@@ -313,6 +316,7 @@ public class TCP {
 								this.tcb.tcb_ack,
 								TCPPacket.TCP_ACK);
 						
+						
 						bb.rewind();
 						bb.get(buf, offset, maxlen);
 						
@@ -326,7 +330,7 @@ public class TCP {
 						this.tcb.tcb_ack = add_uints(p.seq, p.length);
 						
 						System.out.println("READ: sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
-						send_tcp_packet(this.tcb.tcb_their_ip_addr,
+						ByteBuffer b1 = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
 								this.tcb.tcb_our_port,
@@ -334,6 +338,9 @@ public class TCP {
 								this.tcb.tcb_seq,
 								this.tcb.tcb_ack,
 								TCPPacket.TCP_ACK);
+						
+						if(b1 == null)
+							System.out.println("READ: empty bytebuffer");
 					}
 					oldSeq = p.seq;
 				} else {
@@ -342,18 +349,8 @@ public class TCP {
 			}
 			
 			bb.rewind();
-//			/*Check if EOF is in the buffer*/
-//			for(int j = 0; j < buf.length - offset; j++){
-//				if(bb.get() == 0xff){
-//					bb.rewind();
-//					bb.get(buf, offset, j);
-//					System.out.println("READ: returning j " + j);
-//					return j;
-//				}
-//			}
 			
 			bb.rewind();
-//			bb.get(buf, offset, num_read);
 			bb.get(buf, offset, num_read);
 			System.out.println("READ returning num_read: " + num_read);
 			
@@ -418,17 +415,18 @@ public class TCP {
 						System.out.println("WRITE: failed to send");
 						continue;
 					}
-
 					
 					if(recv_tcp_packet(p, true) &&
 							p.src_ip == this.tcb.tcb_their_ip_addr &&
 							p.src_port == this.tcb.tcb_their_port &&
-							p.dst_port ==  this.tcb.tcb_our_port){
-						System.out.println("WRITE: ACK received");
-						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
-								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
-								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+							p.dst_port ==  this.tcb.tcb_our_port ){
 						
+//						
+//						System.out.println("WRITE: ACK received");
+//						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
+//								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
+//								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+//						
 						ackedBytes = p.ack - this.tcb.tcb_seq;
 						break;
 					} else {
@@ -447,7 +445,6 @@ public class TCP {
 					System.out.println("WRITE: return after timeout - sent " + sent);
 					return sent == 0 ? -1 : sent;
 				}
-				
 				
 				
 			}
@@ -623,9 +620,11 @@ public class TCP {
 
 			} catch (IOException e){
 //				e.printStackTrace();
+				System.out.println("RCV: ioexception");
 				return false;
 			} catch(InterruptedException e){
 //				e.printStackTrace();
+				System.out.println("RCV: interrupted");
 				return false;
 			}
 			return true;

@@ -66,8 +66,8 @@ public class Chat extends Activity{
 		EditText et = (EditText) findViewById(R.id.editText1);
 		byte[] message = et.getText().toString().getBytes();
 
-		if(client.write_socket.write(message, 0, message.length) == -1)
-			tv1.append("Error occured during message transamission\n");
+//		if(client.write_socket.write(message, 0, message.length) == -1)
+//			tv1.append("Error occured during message transamission\n");
 		
 		et.setText("");
 	}
@@ -121,7 +121,7 @@ public class Chat extends Activity{
 	public class Server implements Runnable{
 
 		private TCP tcp;
-		private Socket read_socket;
+//		private Socket read_socket;
 		private Socket write_socket;
 
 		public Server(int addr, int port1){
@@ -129,7 +129,7 @@ public class Chat extends Activity{
 				tcp = new TCP(addr);
 				tv1.append("New TCP stack created (192.168.0." + addr + ").\n");
 
-				read_socket = tcp.socket(port1 + 1);
+//				read_socket = tcp.socket(port1 + 1);
 				write_socket = tcp.socket(port1);
 
 				tv1.append("A socket listening on port " + port1 + " created.\n");
@@ -147,7 +147,7 @@ public class Chat extends Activity{
 			byte[] tmp = null;
 
 			write_socket.accept();
-			read_socket.accept();
+//			read_socket.accept();
 
 			
 			msg.obj = "Connection Established\n";
@@ -182,7 +182,7 @@ public class Chat extends Activity{
 
 		private TCP tcp;
 		private Socket read_socket;
-		private Socket write_socket;
+//		private Socket write_socket;
 		private int dstAddress;
 
 		public Client(int srcAddress, int dstAddress, int port1){
@@ -193,7 +193,7 @@ public class Chat extends Activity{
 				tv2.append("New TCP stack created (192.168.0." + srcAddress + ").\n");
 
 				read_socket = tcp.socket();
-				write_socket = tcp.socket();
+//				write_socket = tcp.socket();
 				tv2.append("A socket created.\n");
 
 			} catch(IOException e){
@@ -210,7 +210,7 @@ public class Chat extends Activity{
 			byte[] tmp = null;
 
 			read_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1);
-			write_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1 + 1);
+//			write_socket.connect(IpAddress.getAddress("192.168.0." + dstAddress), port1 + 1);
 
 			msg.obj = "Connection Established\n";
 			msg.arg1 = 2;
