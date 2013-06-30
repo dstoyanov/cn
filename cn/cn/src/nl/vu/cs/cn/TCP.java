@@ -7,7 +7,7 @@ import java.util.Random;
 
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.IP.Packet;
-import nl.vu.cs.cn.TcpControlBlock.ConnectionState;
+import nl.vu.cs.cn.TCPControlBlock.ConnectionState;
 
 /**
  * This class represents a TCP stack. It should be built on top of the IP stack
@@ -25,7 +25,7 @@ public class TCP {
 	public class Socket {
 
 		/* Hint: You probably need some socket specific data. */
-		private TcpControlBlock tcb;
+		private TCPControlBlock tcb;
 
 		/* A new thread for detecting timeouts */
 
@@ -33,7 +33,7 @@ public class TCP {
 		 * Construct a client socket.
 		 */
 		private Socket() {
-			tcb = new TcpControlBlock();
+			tcb = new TCPControlBlock();
 		}
 
 		/**
@@ -42,7 +42,7 @@ public class TCP {
 		 * @param port the local port to use
 		 */
 		private Socket(int port) {
-			tcb = new TcpControlBlock();
+			tcb = new TCPControlBlock();
 			
 			if(port < 0){
 				System.err.println(port + " is not a valid port number.");
@@ -348,10 +348,10 @@ public class TCP {
 							try {
 								this.tcb.tcb_state  = ConnectionState.S_TIME_WAIT;
 								Thread.sleep(1000);
-								this.tcb = new TcpControlBlock();
+								this.tcb = new TCPControlBlock();
 							} catch (InterruptedException e) {
 								System.out.println("READ: interrupted while closing");
-								this.tcb = new TcpControlBlock();
+								this.tcb = new TCPControlBlock();
 								e.printStackTrace();
 							}
 							return retVal;
@@ -551,7 +551,7 @@ public class TCP {
 			// Close the socket cleanly here.
 			if (this.tcb.tcb_state == ConnectionState.S_SYN_SENT || this.tcb.tcb_state == ConnectionState.S_LISTEN) {
 				System.out.println("CLOSE: connection not established yet - returning true");
-				this.tcb = new TcpControlBlock();
+				this.tcb = new TCPControlBlock();
 				return true;
 			}
 			
@@ -643,10 +643,10 @@ public class TCP {
 										System.out.println("CLOSE: FIN_WAIT_1 -> CLOSING -> TIME_WAIT received ack");
 										try {
 											Thread.sleep(1000);
-											this.tcb = new TcpControlBlock();
+											this.tcb = new TCPControlBlock();
 										} catch (InterruptedException e) {
 											System.out.println("CLOSE: interrupted while waiting");
-											this.tcb = new TcpControlBlock();
+											this.tcb = new TCPControlBlock();
 											e.printStackTrace();
 										}
 										return true;
@@ -687,11 +687,11 @@ public class TCP {
 											System.out.println("CLOSE: FIN_WAIT_2 -> TIME_WAIT closing");
 											try {
 												Thread.sleep(1000);
-												this.tcb = new TcpControlBlock();
+												this.tcb = new TCPControlBlock();
 												
 											} catch (InterruptedException e) {
 												System.out.println("CLOSE: Interrupted while waiting");
-												this.tcb = new TcpControlBlock();
+												this.tcb = new TCPControlBlock();
 												e.printStackTrace();
 											}
 											

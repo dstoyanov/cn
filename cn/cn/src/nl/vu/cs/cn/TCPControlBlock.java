@@ -5,7 +5,7 @@ import nl.vu.cs.cn.IP.IpAddress;
  * This class is used for storing the control variables of a TCP stack
  *  (e.g. its state, ip address, port, etc.)
  */
-public class TcpControlBlock {
+public class TCPControlBlock {
 	
 	public enum ConnectionState{
 		S_CLOSED, S_LISTEN, S_SYN_SENT, S_SYN_RCVD,
@@ -22,7 +22,7 @@ public class TcpControlBlock {
 	public int tcb_data_left;						//Undelivered data bytes
 	public ConnectionState tcb_state;				//The current connection state
 	
-	public TcpControlBlock(){
+	public TCPControlBlock(){
 		this.tcb_state = ConnectionState.S_CLOSED;
 	}
 }
