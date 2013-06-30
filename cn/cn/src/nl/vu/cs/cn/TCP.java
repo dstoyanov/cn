@@ -388,11 +388,14 @@ public class TCP {
 						"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
 						"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
 
+				System.out.println("READ received: packet seq " + p.seq + " ack " + p.ack +
+						" own seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				if (p.seq > oldSeq && 
 						p.src_ip == this.tcb.tcb_their_ip_addr &&
 						p.src_port == this.tcb.tcb_their_port &&
-						p.dst_port == this.tcb.tcb_our_port) {
+						p.dst_port == this.tcb.tcb_our_port &&
+						p.seq == this.tcb.tcb_ack) {
 
 					if(num_read + p.length > maxlen){
 						int n = maxlen - num_read;
@@ -400,6 +403,7 @@ public class TCP {
 
 //						this.tcb.tcb_ack += n;
 						this.tcb.tcb_ack = add_uints(p.seq, n);
+						System.out.println("READ: sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 						send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
@@ -604,7 +608,6 @@ public class TCP {
 			int sent = 0;
 			int left;
 			int nbytes = -1;
-			long acknowledged = 0;
 
 			TCPPacket p = new TCPPacket();
 			ByteBuffer sentbb;
@@ -650,19 +653,21 @@ public class TCP {
 						System.out.println("WRITE: failed to send");
 						continue;
 					}
-
-
-					if(recv_tcp_packet(p, true) &&
-							p.src_ip == this.tcb.tcb_their_ip_addr &&
+					
+					boolean r = recv_tcp_packet(p, true);
+					System.out.println("WRITE received: packet seq " + p.seq + " ack " + p.ack +
+							" own seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
+					
+					
+					if(	p.src_ip == this.tcb.tcb_their_ip_addr &&
 							p.src_port == this.tcb.tcb_their_port &&
 							p.dst_port ==  this.tcb.tcb_our_port &&
-							acknowledged < p.ack){
-//						System.out.println("WRITE: ACK received");
-//						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
-//								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
-//								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
-						acknowledged = p.ack;
-						
+							p.ack == this.tcb.tcb_seq + nbytes){
+						System.out.println("WRITE: ACK received");
+						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
+								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
+								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+
 						ackedBytes = p.ack - this.tcb.tcb_seq;
 						break;
 					} else {
