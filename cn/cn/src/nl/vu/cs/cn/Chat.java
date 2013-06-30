@@ -67,9 +67,6 @@ public class Chat extends Activity{
 
 		new Thread(server).start();
 		new Thread(client).start();
-		
-
-
 	}
 
 	/**
