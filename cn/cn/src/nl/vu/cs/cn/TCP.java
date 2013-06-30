@@ -98,8 +98,8 @@ public class TCP {
 				System.out.println("CONNECT first packet: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				if(bb == null){			// if the send is not successful return false 
-					System.out.println("CONNECT: bb null");
-					return false;
+					System.out.println("CONNECT: sending SYN failed");
+					continue;
 				}
 
 				this.tcb.tcb_state = ConnectionState.S_SYN_SENT;
@@ -124,19 +124,22 @@ public class TCP {
 			if(p.checkFlags(TCPPacket.TCP_SYN_ACK) && p.dst_port == this.tcb.tcb_our_port
 					&& p.src_port == this.tcb.tcb_their_port && this.tcb.tcb_seq == p.ack){
 
-				//				this.tcb.incrSeq(1);
-				//				this.tcb.tcb_seq++;
-				this.tcb.tcb_ack = add_uints(p.seq , 1);
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
 						this.tcb.tcb_our_port,
 						this.tcb.tcb_their_port,
 						this.tcb.tcb_seq,
-						this.tcb.tcb_ack,
+						add_uints(p.seq, 1),
 						TCPPacket.TCP_ACK);
-				System.out.println("CONNECT third packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
-
+				if (bb == null) {
+					System.out.println("CONNECT: sending ack (third packet) failed, returning false");
+					return false;
+					
+				}
+				
+				this.tcb.tcb_ack = add_uints(p.seq , 1);
+				System.out.println("CONNECT: third packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
 				System.out.println("CONNECT: returning true");
@@ -184,10 +187,8 @@ public class TCP {
 
 					Random generator = new Random();
 					this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; //unsigned int
-					//					int tmp_seq = generator.nextInt(Integer.MAX_VALUE / 2);
-					//					this.tcb.tcb_seq = tmp_seq < 0 ? (-1) * tmp_seq : tmp_seq;
 
-					//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
+//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
 					int count = 0;
 
 					for(int it = 0; it < 10; it++){
@@ -201,7 +202,7 @@ public class TCP {
 								TCPPacket.TCP_SYN_ACK);
 						System.out.println("ACCEPT: sending second packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
-						//				System.out.println("Accept: SYN/ACK sent");
+//						System.out.println("Accept: SYN/ACK sent");
 
 						if(bb == null){
 							System.out.println("ACCEPT: sent returned null");
@@ -247,8 +248,12 @@ public class TCP {
 		 */
 		public int read(byte[] buf, int offset, int maxlen) {
 			System.out.println("READ: maxlen " + maxlen + " offset " + offset);
-			if (tcb.tcb_state == ConnectionState.S_CLOSE_WAIT) {
-				System.out.println("READ: FIN received from other end, read pointless");
+			if (this.tcb.tcb_state == ConnectionState.S_CLOSE_WAIT || this.tcb.tcb_state == ConnectionState.S_CLOSING || this.tcb.tcb_state == ConnectionState.S_TIME_WAIT) {
+				System.out.println("READ: FIN received from other end, read pointless, will wait forever");
+				return -1;
+			}
+			if (this.tcb.tcb_state != ConnectionState.S_ESTABLISHED && this.tcb.tcb_state != ConnectionState.S_FIN_WAIT_1 && this.tcb.tcb_state != ConnectionState.S_FIN_WAIT_2) {
+				System.out.println("READ: cannot read in this state - connection not established ot breaking down");
 				return -1;
 			}
 
@@ -256,6 +261,7 @@ public class TCP {
 
 			TCPPacket p = new TCPPacket();
 			ByteBuffer bb = ByteBuffer.allocate(maxlen);
+			ByteBuffer readbb = null;
 
 			int num_read = 0;
 
@@ -275,28 +281,26 @@ public class TCP {
 					}
 				} else{									//do not block otherwise
 					if(!recv_tcp_packet(p, true)) {
-						//							String str = new String(buf, "UTF-8");
-						//							System.out.println("READ: message " + str + " size: " + num_read);
-						//							System.out.println("READ: message buf " + buf);
+//						String str = new String(buf, "UTF-8");
+//						System.out.println("READ: message " + str + " size: " + num_read);
+//						System.out.println("READ: message buf " + buf);
 
 						bb.rewind();
 						bb.get(buf, offset, num_read);
 
-						//							try {
-						//								System.out.println("READ: message " + new String(buf, "UTF-8") );
-						//							} catch (UnsupportedEncodingException e) {
-						//								// TODO Auto-generated catch block
-						//								e.printStackTrace();
-						//							}
+//						try {
+//							System.out.println("READ: message " + new String(buf, "UTF-8") );
+//						} catch (UnsupportedEncodingException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
 						return num_read;
 					}					
 				}
 
 				System.out.println("READ: received packet seq " + p.seq + " length "  + p.length);
 
-				//TODO check retransmitting previous packet
 
-				//TODO p.seq <= oldSeq + maxsize
 
 				System.out.println("READ: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
 						"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
@@ -315,9 +319,25 @@ public class TCP {
 
 
 					if (p.checkFlags(TCPPacket.TCP_FIN) && (this.tcb.tcb_state == ConnectionState.S_ESTABLISHED || this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_2)){
-						int retVal = 0;
 						System.out.println("READ: FIN received");
-						tcb.tcb_ack = add_uints(p.seq, p.length + 1);
+						readbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
+								new byte[0],
+								0,
+								this.tcb.tcb_our_port,
+								this.tcb.tcb_their_port,
+								this.tcb.tcb_seq,
+								add_uints(p.seq, p.length + 1),
+								TCPPacket.TCP_ACK);
+						
+						//check if sent successfully
+						if (readbb == null) {
+							System.out.println("READ: ack of in failed to send");
+							continue;
+						}
+						
+						int retVal = 0;
+						this.tcb.tcb_ack = add_uints(p.seq, p.length + 1);
+						
 						//make sure read does not get confused
 						if (p.length > 0) {
 							if (num_read + p.length > maxlen) {
@@ -331,15 +351,6 @@ public class TCP {
 							}
 						}
 
-						send_tcp_packet(this.tcb.tcb_their_ip_addr,
-								new byte[0],
-								0,
-								tcb.tcb_our_port,
-								tcb.tcb_their_port,
-								tcb.tcb_seq,
-								tcb.tcb_ack,
-								TCPPacket.TCP_ACK);
-						//check if sent successful
 
 						if (this.tcb.tcb_state ==ConnectionState.S_ESTABLISHED) {
 							this.tcb.tcb_state = ConnectionState.S_CLOSE_WAIT;
@@ -364,20 +375,22 @@ public class TCP {
 
 					if(num_read + p.length > maxlen){
 						int n = maxlen - num_read;
-						bb.put(p.data, 0, n);
-
-						//						this.tcb.tcb_ack += n;
-						this.tcb.tcb_ack = add_uints(p.seq, n);
-
-						send_tcp_packet(this.tcb.tcb_their_ip_addr,
+						readbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
 								this.tcb.tcb_our_port,
 								this.tcb.tcb_their_port,
 								this.tcb.tcb_seq,
-								this.tcb.tcb_ack,
+								add_uints(p.seq, n),
 								TCPPacket.TCP_ACK);
+						if (readbb == null) {
+							System.out.println("READ: ack to write failed");
+							continue;
+						}
+						
+						bb.put(p.data, 0, n);
 
+						this.tcb.tcb_ack = add_uints(p.seq, n);
 
 						bb.rewind();
 						bb.get(buf, offset, maxlen);
@@ -385,24 +398,26 @@ public class TCP {
 						return maxlen;
 
 					}else{
-						bb.put(p.data, 0, p.length);
-						num_read += p.length;
-
-						//						this.tcb.tcb_ack += p.length;
-						this.tcb.tcb_ack = add_uints(p.seq, p.length);
-
 						System.out.println("READ: sending packet seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
-						ByteBuffer b1 = send_tcp_packet(this.tcb.tcb_their_ip_addr,
+						readbb =  send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
 								this.tcb.tcb_our_port,
 								this.tcb.tcb_their_port,
 								this.tcb.tcb_seq,
-								this.tcb.tcb_ack,
+								add_uints(p.seq, p.length),
 								TCPPacket.TCP_ACK);
 
-						if(b1 == null)
-							System.out.println("READ: empty bytebuffer");
+						if(readbb == null) {
+							System.out.println("READ: ack to write failed");
+							continue;
+						}
+						
+						bb.put(p.data, 0, p.length);
+						num_read += p.length;
+
+						this.tcb.tcb_ack = add_uints(p.seq, p.length);
+
 					}
 					oldSeq = p.seq;
 				} else {
@@ -428,22 +443,28 @@ public class TCP {
 		 * @return the number of bytes written or -1 if an error occurs.
 		 */
 		public int write(byte[] buf, int offset, int len) {
-			System.out.println("WRITE: len " + len);
+			System.out.println("WRITE: len " + len + " offset " + offset);
+			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
+					this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_2 ||
+					this.tcb.tcb_state == ConnectionState.S_TIME_WAIT ||
+					this.tcb.tcb_state == ConnectionState.S_CLOSING ||
+					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
+					this.tcb.tcb_state == ConnectionState.S_CLOSED){
+				System.out.println("WRITE: not in correct state, promised not to write anymore (called close)");
+				return -1;
+			}
+			if (this.tcb.tcb_state != ConnectionState.S_ESTABLISHED && this.tcb.tcb_state != ConnectionState.S_CLOSE_WAIT) {
+				System.out.println("WRITE: not in a state where it can write - connection not set up or disrupted");
+			}
+			
 			int sent = 0;
 			int left;
 			int nbytes = -1;
 
 			TCPPacket p = new TCPPacket();
 			ByteBuffer sentbb;
-			System.out.println("WRITE " + offset + "  " + len + "  " + sent);
 			//check if we are in the correct state
 
-			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
-					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
-					this.tcb.tcb_state == ConnectionState.S_CLOSED){
-				System.out.println("WRITE not in correct state");
-				return -1;
-			}
 
 			while(sent < len) {
 				System.out.println("WRITE loop " + sent + " " + len);
@@ -455,7 +476,7 @@ public class TCP {
 					nbytes = left;
 
 				byte[] tmp = new byte[nbytes];
-				//				System.arraycopy(buf, sent+offset, tmp, sent, nbytes);
+				
 				System.arraycopy(buf, sent+offset, tmp, 0, nbytes);
 
 				int count = 0;
@@ -468,13 +489,13 @@ public class TCP {
 							this.tcb.tcb_their_port,
 							this.tcb.tcb_seq,
 							this.tcb.tcb_ack,
-							TCPPacket.TCP_SYN);
+							(byte) 0x00);
 
 					System.out.println("WRITE: sending packet " + "seq " +	this.tcb.tcb_seq + " ack " +
 							this.tcb.tcb_ack);
 
 					if(sentbb == null){
-						System.out.println("WRITE: failed to send");
+						System.out.println("WRITE: failed to send data packet");
 						continue;
 					}
 
@@ -483,31 +504,36 @@ public class TCP {
 							p.src_port == this.tcb.tcb_their_port &&
 							p.dst_port ==  this.tcb.tcb_our_port ){
 
-						//						
-						//						System.out.println("WRITE: ACK received");
-						//						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
-						//								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
-						//								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
-						//							
+
+//						System.out.println("WRITE: ACK received");
+//						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
+//								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
+//								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
+						
 						if (p.checkFlags(TCPPacket.TCP_FIN) && p.seq == this.tcb.tcb_ack && this.tcb.tcb_state == ConnectionState.S_ESTABLISHED) {
 							System.out.println("WRITE: FIN received");
-							tcb.tcb_ack = add_uints(tcb.tcb_ack, 1) ;
 							//make sure read does not get confused
 							sentbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 									new byte[0],
 									0,
-									tcb.tcb_our_port,
-									tcb.tcb_their_port,
-									tcb.tcb_seq,
-									tcb.tcb_ack,
+									this.tcb.tcb_our_port,
+									this.tcb.tcb_their_port,
+									this.tcb.tcb_seq,
+									add_uints(this.tcb.tcb_ack, 1),
 									TCPPacket.TCP_ACK);
 							//check if sent successful
+							if (sentbb == null) {
+								System.out.println("WRITE: ack of fin failed to send");
+								continue;
+							}
 
+							this.tcb.tcb_ack = add_uints(this.tcb.tcb_ack, 1) ;
 							this.tcb.tcb_state = ConnectionState.S_CLOSE_WAIT;
 
 						}
 						if (p.checkFlags(TCPPacket.TCP_ACK) && p.ack <= add_uints(this.tcb.tcb_seq, nbytes)) {
-							ackedBytes = p.ack - this.tcb.tcb_seq;
+							ackedBytes = p.ack < this.tcb.tcb_seq ? p.ack + Integer.MAX_VALUE - this.tcb.tcb_seq : p.ack - this.tcb.tcb_seq;
+//							ackedBytes = p.ack - this.tcb.tcb_seq;
 							break;
 						} else {
 							System.out.println("WRITE: unexpected packet");
@@ -632,7 +658,7 @@ public class TCP {
 											add_uints(p.seq, 1),
 											TCPPacket.TCP_ACK);
 									if (bb == null) {
-										continue;//will lead to returning false
+										continue;
 									}
 									this.tcb.tcb_state = ConnectionState.S_CLOSING;
 									System.out.println("CLOSE: FIN_WAIT_1 -> CLOSING sent ack");
@@ -683,7 +709,7 @@ public class TCP {
 													add_uints(pFinWait2.seq, 1),
 													TCPPacket.TCP_ACK);
 											if (bb == null) {
-												continue;//will lead to returning false
+												continue;
 											}
 											this.tcb.tcb_state = ConnectionState.S_TIME_WAIT;
 											System.out.println("CLOSE: FIN_WAIT_2 -> TIME_WAIT closing");
@@ -715,7 +741,6 @@ public class TCP {
 					}
 
 				}
-				//				return false; //no acks or fins
 			}
 
 			return true;
@@ -767,15 +792,12 @@ public class TCP {
 
 			pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 4 empty bits
 
-			//			byte mask = (byte) (flags & 0x1b);
-			//			mask |= (1 << 3) & 0xff;
 
 			byte mask = (byte)(flags & ~(TCPPacket.TCP_URG | TCPPacket.TCP_RST));
 			mask |= TCPPacket.TCP_PUSH;
 
-			//			System.out.println("Packet number " + count + " mask " + Byte.toString(mask));
-			//			count++;
-			//			System.out.println("mask " + (int)mask);
+//			System.out.println("Packet number " + count + " mask " + Byte.toString(mask));
+//			System.out.println("mask " + (int)mask);
 
 			pseudo.put(mask);
 			pseudo.putShort((short) 8192);	//Window size equal to the maximal size of a packet	
@@ -788,7 +810,7 @@ public class TCP {
 			}
 
 			long checksum = calculateChecksum(pseudo.array());
-			//			System.out.println("Checksum " + Long.toHexString(checksum));
+//			System.out.println("Checksum " + Long.toHexString(checksum));
 
 			tcp_packet.putChar((char) src_port);
 			tcp_packet.putChar((char) dst_port);
@@ -815,7 +837,7 @@ public class TCP {
 
 			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
 			p1.source = localaddr;
-			//			System.out.println(p1.toString());
+//			System.out.println(p1.toString());
 
 			try{
 				ip.ip_send(p1);
@@ -871,14 +893,14 @@ public class TCP {
 					return false;
 				}
 
-				//				System.out.println("Checksum " + Long.toHexString(checksum));
+//				System.out.println("Checksum " + Long.toHexString(checksum));
 
 			} catch (IOException e){
-				//				e.printStackTrace();
+//				e.printStackTrace();
 				System.out.println("RCV: ioexception");
 				return false;
 			} catch(InterruptedException e){
-				//				e.printStackTrace();
+//				e.printStackTrace();
 				System.out.println("RCV: interrupted");
 				return false;
 			}
