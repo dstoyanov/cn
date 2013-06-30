@@ -53,7 +53,9 @@
 
 \section{Building a TCP stack}
 Our TCP implementation follows strictly the RFC0793 except for the differences explicitly
-mentioned in the course requirements. A full class diagram of the implementation is 
+mentioned in the course requirements.
+
+% Our implementation does not support multiplexing, therefore we made the Socket class singleton
 
 \subsection{TCP Packet}
 The TCPPacket class (See~\ref{fig:tcppacket}) was used to wrap a TCP packet. As can be seen
@@ -115,7 +117,14 @@ Another helper method implemented in the Socket class is the \textit{add\_uints(
 integers. These integers are represented as longs (64-bit in Java) and the method prevents the addition/subtraction to
 cause overflow or underflow of the 32-bit unsigned integer range.
 
-The most important methods in the Socket class are \textit{connect}
+The main methods in the Socket class are \textit{connect(), accept(), read(), write(), close()}. They have one main feature
+in common - the way they deal with errors. To accomplish that, we implemented the state machine from RFC0793. All the methods
+require acknowledgement by the other side of every octet they send. In our implementation acknowledgements are sent only in
+packets that do not contain any data.
+
+
+% Our implementation does not support acknowledgement packets
+% carrying data.
 
 The \textit{connect()} method, as required, is non-blocking and connects a client socket to a server on given \textit{host}
 and \textit{port}.

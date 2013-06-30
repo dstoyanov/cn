@@ -55,7 +55,8 @@
 Our TCP implementation follows strictly the RFC0793 except for the differences explicitly
 mentioned in the course requirements.
 
-% Our implementation does not support multiplexing, therefore we made the Socket class singleton
+Our implementation does not support multiplexing, therefore only one Socket can be created
+per TCP instance. A new Socket can be created if there is no
 
 \subsection{TCP Packet}
 The TCPPacket class (See~\ref{fig:tcppacket}) was used to wrap a TCP packet. As can be seen

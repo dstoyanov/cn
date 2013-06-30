@@ -944,8 +944,10 @@ public class TCP {
 	 * @return a new socket for this stack
 	 */
 	public Socket socket() {
-		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED)
-			return new Socket();
+		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED){
+			instance = new Socket();
+			return instance;
+		}
 		else 
 			return null;
 	}
@@ -955,8 +957,10 @@ public class TCP {
 	 * @param port the port to bind the socket to.
 	 */
 	public Socket socket(int port) {
-		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED)
-			return new Socket(port);
+		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED){
+			instance = new Socket(port);
+			return instance;
+		}
 		else 
 			return null;
 	}
