@@ -25,7 +25,7 @@ public class TCPPacket {
 	public int dst_port;
 	public long seq;
 	public long ack;
-	public short header_length;
+//	public short header_length;
 	public byte flag;
 	public int checksum;
 	public byte[] data;

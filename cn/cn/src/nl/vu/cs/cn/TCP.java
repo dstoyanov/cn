@@ -420,7 +420,6 @@ public class TCP {
 							p.src_ip == this.tcb.tcb_their_ip_addr &&
 							p.src_port == this.tcb.tcb_their_port &&
 							p.dst_port ==  this.tcb.tcb_our_port ){
-						
 //						
 //						System.out.println("WRITE: ACK received");
 //						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
