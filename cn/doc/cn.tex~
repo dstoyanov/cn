@@ -117,7 +117,8 @@ cause overflow or underflow of the 32-bit unsigned integer range.
 
 The main methods in the Socket class are \textit{connect(), accept(), read(), write(), close()}. They have one main feature
 in common - the way they deal with errors. To accomplish that, we implemented the state machine from RFC0793. All the methods
-require acknowledgement by the other side of every octet they send. 
+require acknowledgement by the other side of every octet they send. In our implementation acknowledgements are sent only in
+packets that do not contain any data.
 
 
 % Our implementation does not support acknowledgement packets
