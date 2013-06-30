@@ -1,6 +1,7 @@
 package nl.vu.cs.cn.test;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP;
@@ -11,9 +12,9 @@ import junit.framework.TestCase;
  * waited by the read
  * */
 public class BasicTests extends TestCase {
-	
-	String client_resutl = null;
-	
+
+	String client_resutl = "";
+
 	private class Client implements Runnable{
 
 		private TCP tcp;
@@ -46,13 +47,20 @@ public class BasicTests extends TestCase {
 			byte[] buf = new byte[bufsize];
 			byte[] tmp = null;
 
-			if(socket.connect(IpAddress.getAddress("192.168.0." + this.dst_address), this.port))
-				while((nbytes_read = socket.read(buf, 0, bufsize)) !=  -1){
-
+			if(socket.connect(IpAddress.getAddress("192.168.0." + this.dst_address), this.port)){
+				
+				if((nbytes_read = socket.read(buf, 0, bufsize)) !=  0){
 
 					tmp = new byte[nbytes_read];
 					System.arraycopy(buf, 0, tmp, 0, nbytes_read);
+
+					try {
+						client_resutl += new String(tmp, "UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						e.printStackTrace();
+					}
 				}
+			}
 		}
 	}
 
@@ -76,22 +84,39 @@ public class BasicTests extends TestCase {
 
 		public void run() {
 			this.socket.accept();
+			System.out.println("TEST: connection established server");
+
 
 			this.socket.write(message, 0, message.length);
 
 		}
 	}
-	
+
 	public void testReadShort(){
 		String message_to_send = "some not very long message";
 
 		Server s = new Server(1, 6543, message_to_send);
 		Client c = new Client(2, 1, 6543);
 
-		
-		
+		Thread t1 = new Thread(s);
+		Thread t2 = new Thread(c);
+
+		t1.start();
+		t2.start();
+
+		try {
+			t1.join();
+			t2.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		assertEquals(message_to_send, client_resutl);
+
+
 	}
-	
+
 
 
 }
