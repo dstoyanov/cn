@@ -95,10 +95,9 @@ public class TCP {
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TCPPacket.TCP_SYN);
-				System.out.println("CONNECT first packet: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				if(bb == null){			// if the send is not successful return false 
-					System.out.println("CONNECT: sending SYN failed");
+					System.err.println("CONNECT: sending SYN failed");
 					continue;
 				}
 
@@ -107,7 +106,6 @@ public class TCP {
 
 
 				if(recv_tcp_packet(p, true)){
-					System.out.println("CONNECT: SYN/ACK packet received seq " + p.seq + " ack " + p.ack);
 					break;
 
 				} else {
@@ -116,7 +114,6 @@ public class TCP {
 			}
 
 			if(count == 10){
-				System.out.println("CONNECT: Max number of timeouts (SYN/ACK)");
 				return false;
 			}
 
@@ -133,20 +130,16 @@ public class TCP {
 						add_uints(p.seq, 1),
 						TCPPacket.TCP_ACK);
 				if (bb == null) {
-					System.out.println("CONNECT: sending ack (third packet) failed, returning false");
 					return false;
 					
 				}
 				
 				this.tcb.tcb_ack = add_uints(p.seq , 1);
-				System.out.println("CONNECT: third packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
 				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-				System.out.println("CONNECT: returning true");
 				return true;
 			}
 
-			System.out.println("CONNECT: returning false");
 			return false;
 		}
 
@@ -172,13 +165,11 @@ public class TCP {
 
 				recv_tcp_packet(p, false);				//does not timeout
 
-				System.out.println("ACCEPT: a packet accepted seq " + p.seq + " ack " + p.ack);
 
 
 				if(p.checkFlags(TCPPacket.TCP_SYN) && (!p.checkFlags(TCPPacket.TCP_ACK))
 						&& this.tcb.tcb_our_port == p.dst_port) {
 
-					System.out.println("ACCEPT: packet matches flags addresses and ports");
 
 					this.tcb.tcb_state = ConnectionState.S_SYN_RCVD;
 					this.tcb.tcb_their_ip_addr = p.src_ip ;
@@ -188,7 +179,6 @@ public class TCP {
 					Random generator = new Random();
 					this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; //unsigned int
 
-//					System.out.println("Accept: dst ip" + this.tcb.tcb_their_ip_addr);
 					int count = 0;
 
 					for(int it = 0; it < 10; it++){
@@ -200,42 +190,34 @@ public class TCP {
 								this.tcb.tcb_seq,
 								this.tcb.tcb_ack,
 								TCPPacket.TCP_SYN_ACK);
-						System.out.println("ACCEPT: sending second packet: seq" + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 
-//						System.out.println("Accept: SYN/ACK sent");
 
 						if(bb == null){
-							System.out.println("ACCEPT: sent returned null");
 							continue;
 						}
 
-						//check if we get 10 timeouts
 
 						if(recv_tcp_packet(p, true)){
 							if(p.src_ip  == tcb.tcb_their_ip_addr && p.checkFlags(TCPPacket.TCP_ACK)
 									&& p.ack == add_uints(this.tcb.tcb_seq, 1)
 									&& p.seq == this.tcb.tcb_ack){
 
-								System.out.println("ACCEPT: connected");
 								this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-								this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, 1);			//TODO check if that is correct
+								this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, 1);			
 								return;
 							}
-							System.out.println("ACCEPT: timeout waiting for ack of second packet");
 							count ++;
 						}
 					}
 
 					//no need to check count if you reach here
 					if(count == 10){
-						System.out.println("ACCEPT: Max number timeouts");
 						this.tcb.tcb_state = ConnectionState.S_LISTEN;
 						continue;
 					}
 				}
 			}
 		}
-		//TODO check in read and write if the ports and IPs are correct	
 		/**
 		 * Reads bytes from the socket into the buffer.
 		 * This call is not required to return maxlen bytes
@@ -247,13 +229,12 @@ public class TCP {
 		 * @return the number of bytes read, or -1 if an error occurs.
 		 */
 		public int read(byte[] buf, int offset, int maxlen) {
-			System.out.println("READ: maxlen " + maxlen + " offset " + offset);
 			if (this.tcb.tcb_state == ConnectionState.S_CLOSE_WAIT || this.tcb.tcb_state == ConnectionState.S_CLOSING || this.tcb.tcb_state == ConnectionState.S_TIME_WAIT) {
-				System.out.println("READ: FIN received from other end, read pointless, will wait forever");
+				System.err.println("READ: FIN received from other end, read pointless, will wait forever");
 				return -1;
 			}
 			if (this.tcb.tcb_state != ConnectionState.S_ESTABLISHED && this.tcb.tcb_state != ConnectionState.S_FIN_WAIT_1 && this.tcb.tcb_state != ConnectionState.S_FIN_WAIT_2) {
-				System.out.println("READ: cannot read in this state - connection not established ot breaking down");
+				System.err.println("READ: cannot read in this state - connection not established ot breaking down");
 				return -1;
 			}
 
@@ -263,7 +244,6 @@ public class TCP {
 			ByteBuffer bb = ByteBuffer.allocate(maxlen);
 			ByteBuffer readbb = null;
 
-//			number of bytes read
 			int num_read = 0;
 
 			if(maxlen <= 0)
@@ -281,34 +261,13 @@ public class TCP {
 					}
 				} else{									//do not block otherwise
 					if(!recv_tcp_packet(p, true)) {
-//						String str = new String(buf, "UTF-8");
-//						System.out.println("READ: message " + str + " size: " + num_read);
-//						System.out.println("READ: message buf " + buf);
 
 						bb.rewind();
 						bb.get(buf, offset, num_read);
 
-//						try {
-//							System.out.println("READ: message " + new String(buf, "UTF-8") );
-//						} catch (UnsupportedEncodingException e) {
-//							// TODO Auto-generated catch block
-//							e.printStackTrace();
-//						}
 						return num_read;
 					}					
 				}
-
-				System.out.println("READ: received packet seq " + p.seq + " length "  + p.length);
-
-
-
-				System.out.println("READ: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
-						"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
-						"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
-
-
-
-
 
 
 				if (p.seq > oldSeq && 
@@ -372,8 +331,6 @@ public class TCP {
 							}
 							return retVal;
 						}
-
-
 					}
 					//if data does not fit into buffer - truncate and ack received
 					if(num_read + p.length > maxlen){
@@ -453,9 +410,10 @@ public class TCP {
 					this.tcb.tcb_state == ConnectionState.S_CLOSING ||
 					this.tcb.tcb_state == ConnectionState.S_LAST_ACK ||
 					this.tcb.tcb_state == ConnectionState.S_CLOSED){
-				System.out.println("WRITE: not in correct state, promised not to write anymore (called close)");
+//				System.out.println("WRITE: not in correct state, promised not to write anymore (called close)");
 				return -1;
 			}
+			
 			if (this.tcb.tcb_state != ConnectionState.S_ESTABLISHED && this.tcb.tcb_state != ConnectionState.S_CLOSE_WAIT) {
 				System.out.println("WRITE: not in a state where it can write - connection not set up or disrupted");
 			}
@@ -488,6 +446,7 @@ public class TCP {
 				int count = 0;
 				long ackedBytes = 0;
 				for(int it = 0; it < 10; it++){
+					
 					sentbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							tmp,
 							nbytes,
@@ -497,11 +456,9 @@ public class TCP {
 							this.tcb.tcb_ack,
 							(byte) 0x00);
 
-					System.out.println("WRITE: sending packet " + "seq " +	this.tcb.tcb_seq + " ack " +
-							this.tcb.tcb_ack);
 
 					if(sentbb == null){
-						System.out.println("WRITE: failed to send data packet");
+//						System.out.println("WRITE: failed to send data packet");
 						continue;
 					}
 
@@ -510,11 +467,6 @@ public class TCP {
 							p.src_port == this.tcb.tcb_their_port &&
 							p.dst_port ==  this.tcb.tcb_our_port ){
 
-
-//						System.out.println("WRITE: ACK received");
-//						System.out.println("WRITE: ips: " + p.src_ip + " " + this.tcb.tcb_their_ip_addr + "\n" +
-//								"SRCPORTS: " + p.src_port + "  "  + this.tcb.tcb_their_port + "\n" +
-//								"DSTPORTS: " + p.dst_port + "  " +  this.tcb.tcb_our_port);
 						
 						if (p.checkFlags(TCPPacket.TCP_FIN) && p.seq == this.tcb.tcb_ack && this.tcb.tcb_state == ConnectionState.S_ESTABLISHED) {
 							System.out.println("WRITE: FIN received");
@@ -527,9 +479,9 @@ public class TCP {
 									this.tcb.tcb_seq,
 									add_uints(this.tcb.tcb_ack, 1),
 									TCPPacket.TCP_ACK);
+							
 							//check if sent successful
 							if (sentbb == null) {
-								System.out.println("WRITE: ack of fin failed to send");
 								continue;
 							}
 
@@ -542,24 +494,19 @@ public class TCP {
 //							ackedBytes = p.ack - this.tcb.tcb_seq;
 							break;
 						} else {
-							System.out.println("WRITE: unexpected packet");
 							count ++;
 						}
 
 					} else {
-						System.out.println("WRITE: Timeout ACK");
 						count++;
 					}
 				}
 
-				System.out.println("WRITE: count " + count);
 
 				if(count != 10) {
-					System.out.println("WRITE ackedBytes " + ackedBytes + " seq " + this.tcb.tcb_seq + " nbytes " + nbytes);
 					sent += ackedBytes;
 					this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, ackedBytes);
 				} else {
-					System.out.println("WRITE: return after timeout - sent " + sent);
 					return sent == 0 ? -1 : sent;
 				}
 
@@ -578,13 +525,11 @@ public class TCP {
 		public boolean close() {
 
 			if (this.tcb.tcb_state == ConnectionState.S_CLOSED) {
-				System.out.println("CLOSE: already closed, returning false");
 				return false;
 			}
 
 	
 			if (this.tcb.tcb_state == ConnectionState.S_SYN_SENT || this.tcb.tcb_state == ConnectionState.S_LISTEN) {
-				System.out.println("CLOSE: connection not established yet - returning true");
 				this.tcb = new TCPControlBlock();
 				return true;
 			}
@@ -593,7 +538,6 @@ public class TCP {
 			ByteBuffer bb = null;
 
 			if (this.tcb.tcb_state == ConnectionState.S_CLOSE_WAIT) {
-				System.out.println("CLOSE: CLOSE_WAIT");
 				for (int it = 0; it < 10; it++) {
 					bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							new byte[0],
@@ -604,11 +548,9 @@ public class TCP {
 							this.tcb.tcb_ack,
 							TCPPacket.TCP_FIN);
 					
-					System.out.println("CLOSE: S_CLOSE_WAIT sending fin: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 					if (bb == null) {
 						continue; //failed to send FIN
 					}
-					
 					
 					this.tcb.tcb_state = ConnectionState.S_LAST_ACK;
 					
@@ -621,13 +563,9 @@ public class TCP {
 							
 							//close
 							this.tcb.tcb_state = ConnectionState.S_CLOSED;
-							System.out.println("CLOSE: CLOSE_WAIT -> LAST_ACK received ack, closing");
 							return true;
-
 						}
-
 					}
-
 				}
 				return true;
 			}
@@ -643,7 +581,6 @@ public class TCP {
 							this.tcb.tcb_seq,
 							this.tcb.tcb_ack,
 							TCPPacket.TCP_FIN);
-					System.out.println("CLOSE: S_SYN_RCVD or S_ESTABLISHED sending fin: seq " + this.tcb.tcb_seq + " ack " + this.tcb.tcb_ack);
 					
 					if (bb == null) {
 						continue; //sending fin failed
@@ -658,7 +595,6 @@ public class TCP {
 						
 
 							if (p.checkFlags(TCPPacket.TCP_FIN) && this.tcb.tcb_ack == p.seq) {
-								System.out.println("CLOSE: FIN_WAIT_1 received FIN");
 								
 								TCPPacket pClosing = new TCPPacket();
 								
@@ -677,7 +613,6 @@ public class TCP {
 									
 									this.tcb.tcb_state = ConnectionState.S_CLOSING;
 									
-									System.out.println("CLOSE: FIN_WAIT_1 -> CLOSING sent ack");
 									
 									if (recv_tcp_packet(pClosing, true) &&
 											this.tcb.tcb_our_port == pClosing.dst_port &&
@@ -688,25 +623,24 @@ public class TCP {
 										this.tcb.tcb_state = ConnectionState.S_TIME_WAIT;
 										//wait and close
 										
-										System.out.println("CLOSE: FIN_WAIT_1 -> CLOSING -> TIME_WAIT received ack");
 										try {
 											Thread.sleep(1000);
 											this.tcb = new TCPControlBlock();
+											
 										} catch (InterruptedException e) {
+											
 											System.out.println("CLOSE: interrupted while waiting");
 											this.tcb = new TCPControlBlock();
 											e.printStackTrace();
 										}
 										return true;
 									}
-
 								}
-
 							}
 
 							if (p.checkFlags(TCPPacket.TCP_ACK) && p.ack == add_uints(this.tcb.tcb_seq, 1)) {
+
 								this.tcb.tcb_state = ConnectionState.S_FIN_WAIT_2;
-								System.out.println("CLOSE: FIN_WAIT_2 received ack");
 								TCPPacket pFinWait2 = new TCPPacket();
 
 								//check if a fin follows
@@ -720,7 +654,7 @@ public class TCP {
 										
 										//check if fin
 										if (pFinWait2.checkFlags(TCPPacket.TCP_FIN) && tcb.tcb_ack == pFinWait2.seq) {
-											//sned ack
+											//send ack
 											
 											System.out.println("CLOSE: FIN_WAIT_2 received fin");
 											bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
@@ -735,6 +669,7 @@ public class TCP {
 											if (bb == null) {
 												continue; //sending ack failed
 											}
+											
 											this.tcb.tcb_state = ConnectionState.S_TIME_WAIT;
 											
 											System.out.println("CLOSE: FIN_WAIT_2 -> TIME_WAIT closing");
@@ -745,7 +680,7 @@ public class TCP {
 												this.tcb = new TCPControlBlock();
 
 											} catch (InterruptedException e) {
-												System.out.println("CLOSE: Interrupted while waiting");
+												
 												this.tcb = new TCPControlBlock();
 												e.printStackTrace();
 											}
@@ -759,20 +694,26 @@ public class TCP {
 								//no fin arrives within 10 sec, may continue reading
 								return true;
 							}
-
-
-
 						}
-
-
 					}
-
 				}
 			}
 
 			return true;
 		}
 
+		/**
+		 * A method used for sending packets trough the IP layer. It encodes the
+		 * parameters and creates an IP packet.
+		 * 
+		 * @param dst_address the destination address
+		 * @param buf the data to send
+		 * @param length the length of the data
+		 * @param src_port the source port of the packet
+		 * @param dst_port the destination port
+		 * @param ack_number the ack number
+		 * @param flags the flags of the TCP packet
+		 * */
 		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
 				int dst_port, long seq_number, long ack_number, byte flags){
 
@@ -823,9 +764,6 @@ public class TCP {
 			byte mask = (byte)(flags & ~(TCPPacket.TCP_URG | TCPPacket.TCP_RST));
 			mask |= TCPPacket.TCP_PUSH;
 
-//			System.out.println("Packet number " + count + " mask " + Byte.toString(mask));
-//			System.out.println("mask " + (int)mask);
-
 			pseudo.put(mask);
 			pseudo.putShort((short) 8192);	//Window size equal to the maximal size of a packet	
 
@@ -837,7 +775,6 @@ public class TCP {
 			}
 
 			long checksum = calculateChecksum(pseudo.array());
-//			System.out.println("Checksum " + Long.toHexString(checksum));
 
 			tcp_packet.putChar((char) src_port);
 			tcp_packet.putChar((char) dst_port);
@@ -862,9 +799,8 @@ public class TCP {
 			tcp_packet.put(buf);
 
 
-			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20); //TODO why the length can be smaller than the data size?
+			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20);
 			p1.source = localaddr;
-//			System.out.println(p1.toString());
 
 			try{
 				ip.ip_send(p1);
@@ -874,13 +810,21 @@ public class TCP {
 
 			return tcp_packet;
 		}
-
-		public boolean recv_tcp_packet (TCPPacket tcpp, boolean timeout) {
+		
+		
+		/**
+		 * A method used for communication with the IP layer. It receives an IP packet,
+		 * decodes it and computes the checksum.
+		 * 
+		 * @param tcpp the packet to be read
+		 * @param blocking if use blocking or non-blocking version of the method
+		 *  */
+		public boolean recv_tcp_packet (TCPPacket tcpp, boolean blocking) {
 			Packet p = new Packet();
 			ByteBuffer pseudo;
 
 			try{
-				if(timeout == true)
+				if(blocking == true)
 					ip.ip_receive_timeout(p, 1);
 				else
 					ip.ip_receive(p);
@@ -920,20 +864,19 @@ public class TCP {
 					return false;
 				}
 
-//				System.out.println("Checksum " + Long.toHexString(checksum));
 
 			} catch (IOException e){
-//				e.printStackTrace();
-				System.out.println("RCV: ioexception");
 				return false;
 			} catch(InterruptedException e){
-//				e.printStackTrace();
 				System.out.println("RCV: interrupted");
 				return false;
 			}
 			return true;
 		}
 
+		/**
+		 * A method used for computing the checksum of an byte array
+		 * */
 		private long calculateChecksum(byte[] buf) {
 			int length = buf.length;
 			int i = 0;
