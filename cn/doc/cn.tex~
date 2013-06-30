@@ -83,7 +83,7 @@ for the lack of the appropriate unsigned types in Java.
 The TCPControlBlock (see Figure~\ref{fig:tcb}) is used to maintain all the information which is needed
 for the Socket functioning. The state of the socket is stored in the control block. Figure~\ref{fig:tcb}
 shows all the states in our implementation; we will not discuss them in details since they are used
-exactly in the way RFC0793 defines them.
+exactly in the
 
 \begin{figure}[h!]
 \centering

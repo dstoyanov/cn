@@ -1,0 +1,21 @@
+\begin{figure}[t]
+\centering
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+Bit offset & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\ \hline \hline
+0 & \multicolumn{16}{|c|}{Source Port} \\ \hline
+16 & \multicolumn{16}{|c|}{Destination Port} \\ \hline
+32 & \multicolumn{16}{|c|}{\multirow{2}{*}{Sequence Number}} \\ \cline{1-1}
+48 & \multicolumn{16}{|c|}{} \\ \hline
+64 & \multicolumn{16}{|c|}{\multirow{2}{*}{Acknowledgment Number}} \\ \cline{1-1}
+80 & \multicolumn{16}{|c|}{} \\ \hline
+96 & \multicolumn{4}{|c|}{Data offset} & \multicolumn{3}{|c|}{\emph{Reserved}} & \begin{sideways}\parbox{10mm}{NS}\end{sideways} & \begin{sideways}\parbox{10mm}{CWR}\end{sideways} & \begin{sideways}\parbox{10mm}{ECE}\end{sideways} & \begin{sideways}\parbox{10mm}{URG}\end{sideways} & \begin{sideways}\parbox{10mm}{ACK}\end{sideways} & \begin{sideways}\parbox{10mm}{PSH}\end{sideways} & \begin{sideways}\parbox{10mm}{RST}\end{sideways} & \begin{sideways}\parbox{10mm}{SYN}\end{sideways} & \begin{sideways}\parbox{10mm}{FIN}\end{sideways} \\ \hline
+112 & \multicolumn{16}{|c|}{Window Size} \\ \hline
+128 & \multicolumn{16}{|c|}{Checksum} \\ \hline
+144 & \multicolumn{16}{|c|}{Urgent pointer} \\ \hline \hline
+160 & \multicolumn{16}{|c|}{Options} \\ \hline
+176 & \multicolumn{8}{|c|}{Options (\emph{cont.})} & \multicolumn{8}{|c|}{\emph{Padding}}\\ \hline
+\end{tabular}
+\caption{TCP Packet Header}
+\label{fig:tcpheader}
+\end{figure}
