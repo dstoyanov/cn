@@ -402,8 +402,8 @@ public class TCP {
 		 * @param len the number of bytes to write
 		 * @return the number of bytes written or -1 if an error occurs.
 		 */
-		public int write(byte[] buf, int offset, int len) {
-			System.out.println("WRITE: len " + len + " offset " + offset);
+		public int write(byte[] buf, int offset, int length) {
+			
 			if(this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_1 ||
 					this.tcb.tcb_state == ConnectionState.S_FIN_WAIT_2 ||
 					this.tcb.tcb_state == ConnectionState.S_TIME_WAIT ||
@@ -424,6 +424,8 @@ public class TCP {
 			int left;
 			
 			int nbytes = -1;
+			
+			int len = length > buf.length ? buf.length : length;
 
 			TCPPacket p = new TCPPacket();
 			ByteBuffer sentbb;
@@ -936,7 +938,7 @@ public class TCP {
 	 * @return a new socket for this stack
 	 */
 	public Socket socket() {
-		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED){
+		if(instance == null){
 			instance = new Socket();
 			return instance;
 		}
@@ -949,7 +951,7 @@ public class TCP {
 	 * @param port the port to bind the socket to.
 	 */
 	public Socket socket(int port) {
-		if(instance == null || instance.tcb.tcb_state == ConnectionState.S_CLOSED){
+		if(instance == null){
 			instance = new Socket(port);
 			return instance;
 		}
