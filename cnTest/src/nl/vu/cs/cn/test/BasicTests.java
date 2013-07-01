@@ -3,120 +3,104 @@ package nl.vu.cs.cn.test;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
+import android.test.AndroidTestCase;
+
+import nl.vu.cs.cn.BogusTCP;
+import nl.vu.cs.cn.BogusTCP.BogusSocket;
 import nl.vu.cs.cn.IP.IpAddress;
 import nl.vu.cs.cn.TCP;
 import nl.vu.cs.cn.TCP.Socket;
 import junit.framework.TestCase;
-/*
- * Tests the case when the length of the sent packet is less than the MAXLEN
- * waited by the read
- * */
-public class BasicTests extends TestCase {
-
-	String client_resutl = "";
-
-	private class Client implements Runnable{
-
-		private TCP tcp;
-
-		private int port;
-
-		private int dst_address;
-
-		private Socket socket;
-
-		int bufsize = 128;
-
-		public Client(int our_address, int their_address, int port){
-
-			try{
-				this.port = port;
-				this.dst_address = their_address;
 
 
-				tcp = new TCP(our_address);
-				socket = tcp.socket();
-
-			} catch(IOException e){
-
+public class BasicTests extends AndroidTestCase {
+	
+	/* 
+	 * This test simulates packet loss changing
+	 * the original method for communication between
+	 * the TCP and IP level in such a way that it drops
+	 * 50% of the packets 
+	 * */
+	public void testPacketLoss(){
+		
+		class Server extends Thread{
+			BogusSocket s;
+			
+			public Server(BogusSocket s){
+				this.s = s;
 			}
-		}
-
-		public void run() {
-			int nbytes_read = 0;
-			byte[] buf = new byte[bufsize];
-			byte[] tmp = null;
-
-			if(socket.connect(IpAddress.getAddress("192.168.0." + this.dst_address), this.port)){
+			
+			@Override
+			public void run() {
+				byte[] data = {(byte) 0xff, (byte)0x1f, (byte) 0x8a, (byte) 0x12, (byte) 0x56};
+				this.s.accept();
+				this.s.write(data, 0, data.length);
 				
-				if((nbytes_read = socket.read(buf, 0, bufsize)) !=  0){
-
-					tmp = new byte[nbytes_read];
-					System.arraycopy(buf, 0, tmp, 0, nbytes_read);
-
-					try {
-						client_resutl += new String(tmp, "UTF-8");
-					} catch (UnsupportedEncodingException e) {
-						e.printStackTrace();
-					}
-				}
+			}
+			
+		}
+		
+		class Client extends Thread{
+			BogusSocket s;
+			int addr;
+			int port;
+			
+			public Client(BogusSocket s, int addr, int port){
+				this.s = s;
+				this.addr = addr;
+				this.port = port;
+			}
+			
+			@Override
+			public void run() {
+				byte[] buffer = new byte[5];
+				this.s.connect(IpAddress.getAddress("192.168.0." + addr), port);
+				
+				
 			}
 		}
-	}
+		
+		int ip_server = 1;
+		int ip_client = 2;
 
-	public class Server implements Runnable{
-		private Socket socket;
+		int port = 1234;
 
-		byte[] message;
+		BogusTCP s_tcp;
+		BogusTCP c_tcp;
 
-		public Server(int our_address, int port, String m){
-			try{
-				TCP tcp = new TCP(our_address);
-
-				this.socket = tcp.socket(port);
-
-				this.message = m.getBytes();
-
-			} catch(IOException e){
-				e.printStackTrace();
-			}
-		}
-
-		public void run() {
-			this.socket.accept();
-			System.out.println("TEST: connection established server");
-
-
-			this.socket.write(message, 0, message.length);
-
-		}
-	}
-
-	public void testReadShort(){
-		String message_to_send = "some not very long message";
-
-		Server s = new Server(1, 6543, message_to_send);
-		Client c = new Client(2, 1, 6543);
-
-		Thread t1 = new Thread(s);
-		Thread t2 = new Thread(c);
-
-		t1.start();
-		t2.start();
+		BogusSocket s_socket;
+		BogusSocket c_socket;
 
 		try {
-			t1.join();
-			t2.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			s_tcp = new BogusTCP(ip_server);
+			c_tcp = new BogusTCP(ip_client);
+			
+			s_socket = s_tcp.socket(port);
+			c_socket = c_tcp.socket();
+			
+			Server s = new Server(s_socket);
+			Client c = new Client(c_socket, ip_server, port);
+			
+			s.start();
+			c.start();
+			
+			try {
+				s.join();
+				c.join();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		} catch (IOException e) {
+			assertTrue(false);
 		}
 
-		assertEquals(message_to_send, client_resutl);
+
+
 
 
 	}
-
 
 
 }

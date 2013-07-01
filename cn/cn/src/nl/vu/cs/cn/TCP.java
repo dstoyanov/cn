@@ -714,7 +714,7 @@ public class TCP {
 		 * @param ack_number the ack number
 		 * @param flags the flags of the TCP packet
 		 * */
-		public ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
+		private ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
 				int dst_port, long seq_number, long ack_number, byte flags){
 
 			ByteBuffer pseudo;
@@ -819,7 +819,7 @@ public class TCP {
 		 * @param tcpp the packet to be read
 		 * @param blocking if use blocking or non-blocking version of the method
 		 *  */
-		public boolean recv_tcp_packet (TCPPacket tcpp, boolean blocking) {
+		private boolean recv_tcp_packet (TCPPacket tcpp, boolean blocking) {
 			Packet p = new Packet();
 			ByteBuffer pseudo;
 

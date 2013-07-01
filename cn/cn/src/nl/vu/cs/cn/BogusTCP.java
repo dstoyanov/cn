@@ -91,6 +91,10 @@ public class BogusTCP {
 			//check if we get 10 timeouts
 			int count = 0;
 			for(int it = 0; it < 10; it++){
+
+				System.err.println("CONNECT timeout #" + it + "  on transmission" +
+						" of packet with seq " + this.tcb.tcb_seq);
+				
 				bb = send_tcp_packet(dst.getAddress(),
 						new byte[0],
 						0,
@@ -99,6 +103,7 @@ public class BogusTCP {
 						this.tcb.tcb_seq,
 						this.tcb.tcb_ack,
 						TCPPacket.TCP_SYN);
+				
 
 				if(bb == null){			// if the send is not successful return false 
 					System.err.println("CONNECT: sending SYN failed");
@@ -186,6 +191,11 @@ public class BogusTCP {
 					int count = 0;
 
 					for(int it = 0; it < 10; it++){
+						
+
+						System.err.println("ACCEPT timeout #" + it + "  on transmission" +
+								" of packet with seq " + this.tcb.tcb_seq);
+						
 						bb = this.send_tcp_packet(this.tcb.tcb_their_ip_addr,
 								new byte[0],
 								0,
@@ -431,7 +441,6 @@ public class BogusTCP {
 
 			TCPPacket p = new TCPPacket();
 			ByteBuffer sentbb;
-			//check if we are in the correct state
 
 
 			while(sent < len) {
@@ -450,6 +459,10 @@ public class BogusTCP {
 				int count = 0;
 				long ackedBytes = 0;
 				for(int it = 0; it < 10; it++){
+					
+
+					System.err.println("WRITE timeout #" + it + "  on transmission" +
+							" of packet with seq " + this.tcb.tcb_seq);
 					
 					sentbb = send_tcp_packet(this.tcb.tcb_their_ip_addr,
 							tmp,
@@ -710,6 +723,9 @@ public class BogusTCP {
 		 * A method used for sending packets trough the IP layer. It encodes the
 		 * parameters and creates an IP packet.
 		 * 
+		 * That method is altered to drop 50% of the packets to simulate
+		 * packet loss
+		 * 
 		 * @param dst_address the destination address
 		 * @param buf the data to send
 		 * @param length the length of the data
@@ -720,6 +736,13 @@ public class BogusTCP {
 		 * */
 		private ByteBuffer send_tcp_packet(int dst_address, byte[] buf, int length, int src_port,
 				int dst_port, long seq_number, long ack_number, byte flags){
+			
+			Random generator = new Random();
+			
+			if(generator.nextInt(100) < 50){
+				System.err.println("SEND: drops a packet");
+				return null;
+			}
 
 			ByteBuffer pseudo;
 			ByteBuffer tcp_packet = ByteBuffer.allocate(length + 20);
