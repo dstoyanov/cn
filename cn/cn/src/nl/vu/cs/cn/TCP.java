@@ -323,11 +323,21 @@ public class TCP {
 							try {
 								this.tcb.tcb_state  = ConnectionState.S_TIME_WAIT;
 								Thread.sleep(1000);
+								
+								int tmp_port = this.tcb.tcb_our_port;
+								
 								this.tcb = new TCPControlBlock();
+								
+								this.tcb.tcb_our_port = tmp_port;
+								
 							} catch (InterruptedException e) {
+								
+								int tmp_port = this.tcb.tcb_our_port;
+								
 								System.out.println("READ: interrupted while closing");
 								this.tcb = new TCPControlBlock();
-								e.printStackTrace();
+								
+								this.tcb.tcb_our_port = tmp_port;
 							}
 							return retVal;
 						}
@@ -627,12 +637,22 @@ public class TCP {
 										
 										try {
 											Thread.sleep(1000);
+											
+											int tmp_port = this.tcb.tcb_our_port;
+											
 											this.tcb = new TCPControlBlock();
+											
+											this.tcb.tcb_our_port = tmp_port;
 											
 										} catch (InterruptedException e) {
 											
+											int tmp_port = this.tcb.tcb_our_port;
+
 											System.out.println("CLOSE: interrupted while waiting");
+											
 											this.tcb = new TCPControlBlock();
+											
+											this.tcb.tcb_our_port = tmp_port;
 											e.printStackTrace();
 										}
 										return true;
@@ -678,8 +698,14 @@ public class TCP {
 											
 											//wait and close
 											try {
+												
+												int tmp_port = this.tcb.tcb_our_port;
+												
 												Thread.sleep(1000);
+												
 												this.tcb = new TCPControlBlock();
+												this.tcb.tcb_our_port = tmp_port;
+												
 
 											} catch (InterruptedException e) {
 												
