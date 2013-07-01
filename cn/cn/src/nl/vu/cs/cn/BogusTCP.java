@@ -152,103 +152,6 @@ public class BogusTCP {
 			return false;
 		}
 		
-		
-
-		
-		/**
-		 * Connect this socket to the specified destination and port.
-		 * Simulates a lost ack during the 3-way handshake
-		 *
-		 * @param dst the destination to connect to
-		 * @param port the port to connect to
-		 * @return true if the connect succeeded.
-		 */
-		public boolean lost_ack_connect(IpAddress dst, int port) {
-			ByteBuffer bb;
-			TCPPacket p = new TCPPacket();
-
-			if(this.tcb.tcb_state != ConnectionState.S_CLOSED){
-				System.err.println("The socket is not in the correct state");
-				return false;
-			}
-
-			this.tcb.tcb_their_ip_addr = dst.getAddress();
-			this.tcb.tcb_our_ip_addr = (int) ip.getLocalAddress().getAddress();
-
-
-			Random generator = new Random();
-			this.tcb.tcb_our_port = Math.abs(generator.nextInt(2  * Short.MAX_VALUE ));
-			this.tcb.tcb_seq = (long) generator.nextInt() + (long)Integer.MAX_VALUE; //unsigned int
-
-
-			this.tcb.tcb_their_port = port;
-
-			this.tcb.tcb_ack = 0;
-
-			//send the first SYN packet from the three-way handshake
-			//check if we get 10 timeouts
-			int count = 0;
-			for(int it = 0; it < 10; it++){
-
-				System.err.println("CONNECT timeout #" + it + "  on transmission" +
-						" of packet with seq " + this.tcb.tcb_seq);
-				
-				bb = send_tcp_packet(dst.getAddress(),
-						new byte[0],
-						0,
-						this.tcb.tcb_our_port,
-						this.tcb.tcb_their_port,
-						this.tcb.tcb_seq,
-						this.tcb.tcb_ack,
-						TCPPacket.TCP_SYN);
-				
-
-				if(bb == null){			// if the send is not successful return false 
-					System.err.println("CONNECT: sending SYN failed");
-					continue;
-				}
-
-				this.tcb.tcb_state = ConnectionState.S_SYN_SENT;
-
-
-
-				if(recv_tcp_packet(p, true)){
-					break;
-
-				} else {
-					count ++;
-				}
-			}
-
-			if(count == 10){
-				return false;
-			}
-
-			this.tcb.tcb_seq = add_uints(this.tcb.tcb_seq, 1);
-			if(p.checkFlags(TCPPacket.TCP_SYN_ACK) && p.dst_port == this.tcb.tcb_our_port
-					&& p.src_port == this.tcb.tcb_their_port && this.tcb.tcb_seq == p.ack){
-
-//				bb = send_tcp_packet(dst.getAddress(),
-//						new byte[0],
-//						0,
-//						this.tcb.tcb_our_port,
-//						this.tcb.tcb_their_port,
-//						this.tcb.tcb_seq,
-//						add_uints(p.seq, 1),
-//						TCPPacket.TCP_ACK);
-//				if (bb == null) {
-//					return false;
-//					
-//				}
-				
-				this.tcb.tcb_ack = add_uints(p.seq , 1);
-
-				this.tcb.tcb_state = ConnectionState.S_ESTABLISHED;
-				return true;
-			}
-
-			return false;
-		}
 
 		
 		public boolean bogus_connect(IpAddress dst, int port) {
@@ -1650,6 +1553,120 @@ public class BogusTCP {
 
 			tcp_packet.put((byte) 0x50);
 
+			tcp_packet.put(mask);
+			tcp_packet.putShort((short) 8192);	//Window size
+
+			tcp_packet.putShort((short) checksum);
+			tcp_packet.putShort((short) 0); //Urgent pointer
+			tcp_packet.put(buf);
+
+
+			Packet p1 = new Packet(dst_ip, 6, 0, tcp_packet.array(), length + 20);
+			p1.source = localaddr;
+
+			try{
+				ip.ip_send(p1);
+			} catch(IOException e){
+				return null;			//if the send fails
+			}
+
+			return tcp_packet;
+		}
+		
+		/**
+		 * A method used for sending packets trough the IP layer. It encodes the
+		 * parameters and creates an IP packet.
+		 * 
+		 * That method is altered to drop 50% of the packets to simulate
+		 * packet loss
+		 * 
+		 * @param dst_address the destination address
+		 * @param buf the data to send
+		 * @param length the length of the data
+		 * @param src_port the source port of the packet
+		 * @param dst_port the destination port
+		 * @param ack_number the ack number
+		 * @param flags the flags of the TCP packet
+		 * */
+		public ByteBuffer send_tcp_packet_wrong_checksum(int dst_address, byte[] buf, int length, int src_port,
+				int dst_port, long seq_number, long ack_number, byte flags){
+
+			ByteBuffer pseudo;
+			ByteBuffer tcp_packet = ByteBuffer.allocate(length + 20);
+			int dst_ip;
+
+			if(length % 2 == 0){
+				pseudo = ByteBuffer.allocate(length + 32);
+			} else{
+				pseudo = ByteBuffer.allocate(length + 33);
+			}
+
+			/* The pseudo header for checksum computation	 */
+			int localaddr = ip.getLocalAddress().getAddress();
+
+			pseudo.put((byte)(localaddr & 0xff));
+			pseudo.put((byte)(localaddr >> 8 & 0xff));
+			pseudo.put((byte)(localaddr >> 16 & 0xff));
+			pseudo.put((byte)(localaddr >>> 24));
+
+			dst_ip = dst_address;
+			pseudo.put((byte)(dst_ip & 0xff));
+			pseudo.put((byte)(dst_ip >> 8 & 0xff));
+			pseudo.put((byte)(dst_ip >> 16 & 0xff));
+			pseudo.put((byte)(dst_ip >>> 24));
+
+			pseudo.put((byte)0);
+			pseudo.put((byte) 6);
+			pseudo.putShort((short) (length + 20));
+
+			pseudo.putChar((char) src_port);
+			pseudo.putChar((char) dst_port);
+
+			pseudo.put((byte)(seq_number >>> 24));
+			pseudo.put((byte)(seq_number >> 16 & 0xff));
+			pseudo.put((byte)(seq_number >> 8 & 0xff));
+			pseudo.put((byte)(seq_number & 0xff));
+
+			pseudo.put((byte)(ack_number >>> 24));
+			pseudo.put((byte)(ack_number >> 16 & 0xff));
+			pseudo.put((byte)(ack_number >> 8 & 0xff));
+			pseudo.put((byte)(ack_number & 0xff));
+
+			pseudo.put((byte) 0x50);	// The TCP header length = 5 and the 4 empty bits
+
+
+			byte mask = (byte)(flags & ~(TCPPacket.TCP_URG | TCPPacket.TCP_RST));
+			mask |= TCPPacket.TCP_PUSH;
+
+			pseudo.put(mask);
+			pseudo.putShort((short) 8192);	//Window size equal to the maximal size of a packet	
+
+			pseudo.putInt(0);			//The Checksum and the urgent pointer
+			pseudo.put(buf);
+
+			if(length % 2 != 0){
+				pseudo.put((byte) 0);
+			}
+
+			long checksum = calculateChecksum(pseudo.array());
+
+			tcp_packet.putChar((char) src_port);
+			tcp_packet.putChar((char) dst_port);
+
+			tcp_packet.put((byte)(seq_number >>> 24));
+			tcp_packet.put((byte)(seq_number >> 16 & 0xff));
+			tcp_packet.put((byte)(seq_number >> 8 & 0xff));
+			tcp_packet.put((byte)(seq_number & 0xff));
+
+			tcp_packet.put((byte)(ack_number >>> 24));
+			tcp_packet.put((byte)(ack_number >> 16 & 0xff));
+			tcp_packet.put((byte)(ack_number >> 8 & 0xff));
+			tcp_packet.put((byte)(ack_number & 0xff));
+
+			/* corrupt that byte */
+//			tcp_packet.put((byte) 0x50);
+			tcp_packet.put((byte) 0x49);
+			
 			tcp_packet.put(mask);
 			tcp_packet.putShort((short) 8192);	//Window size
 
