@@ -37,7 +37,6 @@ public class BasicTests extends AndroidTestCase {
 				this.s.write(data, 0, data.length);
 				
 			}
-			
 		}
 		
 		class Client extends Thread{
@@ -53,10 +52,13 @@ public class BasicTests extends AndroidTestCase {
 			
 			@Override
 			public void run() {
+				byte[] data = {(byte) 0xff, (byte)0x1f, (byte) 0x8a, (byte) 0x12, (byte) 0x56};
 				byte[] buffer = new byte[5];
 				this.s.connect(IpAddress.getAddress("192.168.0." + addr), port);
-				
-				
+				this.s.read(buffer, 0, 5);
+
+				assertTrue(true);
+//				assertEquals(buffer, data);
 			}
 		}
 		
