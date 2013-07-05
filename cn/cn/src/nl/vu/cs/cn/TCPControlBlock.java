@@ -1,6 +1,5 @@
 package nl.vu.cs.cn;
 
-import nl.vu.cs.cn.IP.IpAddress;
 /**
  * This class is used for storing the control variables of a TCP stack
  *  (e.g. its state, ip address, port, etc.)
